@@ -1256,7 +1256,7 @@ read_task_queue(void)
 	    return 0;
 	}
 	if (!(program = dbio_read_forked_program(dbio_input_version,
-					  0, (void *) "forked task", &orig_names))) {
+			      0, (void *) "forked task", &orig_names))) {
 	    errlog("READ_TASK_QUEUE: Bad program, count = %d.\n", count);
 	    return 0;
 	}
@@ -2014,6 +2014,9 @@ char rcsid_tasks[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.9.6.3  2002/09/17 15:35:06  xplat
+ * GNU indent normalization.
+ *
  * Revision 1.9.6.2  2002/09/17 15:04:07  xplat
  * Updated to INLINEPC_updater_1 in trunk.
  *

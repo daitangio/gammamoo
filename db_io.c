@@ -312,7 +312,7 @@ dbio_read_program(DB_Version version, const char *(*fmtr) (void *), void *data)
 
 Program *
 dbio_read_active_program(DB_Version version, const char *(*fmtr) (void *),
-                         void *data, Names **orig_names, int *pc)
+			 void *data, Names ** orig_names, int *pc)
 {
     struct state s;
 
@@ -323,7 +323,7 @@ dbio_read_active_program(DB_Version version, const char *(*fmtr) (void *),
 }
 
 Program *
-dbio_read_forked_program(DB_Version version, const char *(*fmtr) (void *), void *data, Names **orig_names)
+dbio_read_forked_program(DB_Version version, const char *(*fmtr) (void *), void *data, Names ** orig_names)
 {
     struct state s;
 
@@ -450,6 +450,9 @@ char rcsid_db_io[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.2  2002/09/17 15:35:04  xplat
+ * GNU indent normalization.
+ *
  * Revision 1.5.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
