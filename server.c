@@ -559,41 +559,33 @@ init_cmdline(int argc, char *argv[])
     cmdline_buflen = p - argv[0];
 }
 
+#define SERVER_CO_TABLE(DEFINE, H, VALUE, _)				\
+    DEFINE(binary, _, TYPE_INT, num,					\
+	   H->binary,							\
+	   {								\
+	       H->binary = is_true(VALUE);				\
+	       network_set_connection_binary(H->nhandle, H->binary);	\
+	   })								\
+
 static int
 server_set_connection_option(shandle * h, const char *option, Var value)
 {
-    if (!mystrcasecmp(option, "binary")) {
-	h->binary = is_true(value);
-	network_set_connection_binary(h->nhandle, h->binary);
-	return 1;
-    }
-    return 0;
+    CONNECTION_OPTION_SET(SERVER_CO_TABLE, h, option, value);
 }
 
 static int
 server_connection_option(shandle * h, const char *option, Var * value)
 {
-    if (!mystrcasecmp(option, "binary")) {
-	value->type = TYPE_INT;
-	value->v.num = h->binary;
-	return 1;
-    }
-    return 0;
+    CONNECTION_OPTION_GET(SERVER_CO_TABLE, h, option, value);
 }
 
 static Var
 server_connection_options(shandle * h, Var list)
 {
-    Var pair;
-
-    pair = new_list(2);
-    pair.v.list[1].type = TYPE_STR;
-    pair.v.list[1].v.str = str_dup("binary");
-    pair.v.list[2].type = TYPE_INT;
-    pair.v.list[2].v.num = h->binary;
-
-    return listappend(list, pair);
+    CONNECTION_OPTION_LIST(SERVER_CO_TABLE, h, list);
 }
+
+#undef SERVER_CO_TABLE
 
 static char *
 read_stdin_line()
@@ -1739,6 +1731,9 @@ char rcsid_server[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.10.1  2003/06/07 12:59:04  wrog
+ * introduced connection_option macros
+ *
  * Revision 1.5  1998/12/29 06:56:32  nop
  * Fixed leak in onc().
  *
