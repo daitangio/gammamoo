@@ -63,14 +63,14 @@ extern Program *dbio_read_program(DB_Version version,
 				  const char *(*fmtr) (void *),
 				  void *data);
 extern Program *dbio_read_active_program(DB_Version version,
-				         const char *(*fmtr) (void *),
-				         void *data,
-				         Names **original_names,
-				         int *pc);
+					 const char *(*fmtr) (void *),
+					 void *data,
+					 Names ** original_names,
+					 int *pc);
 extern Program *dbio_read_forked_program(DB_Version version,
-				         const char *(*fmtr) (void *),
-				         void *data,
-				         Names **original_names);
+					 const char *(*fmtr) (void *),
+					 void *data,
+					 Names ** original_names);
 				/* FMTR is called with DATA to produce a human-
 				 * understandable identifier for the program
 				 * being read, for use in any error/warning
@@ -109,7 +109,10 @@ extern void dbio_write_forked_program(Program * prog, int f_index);
 
 /* 
  * $Log: db_io.h,v $
- * Revision 1.4.6.1  2002-09-12 05:57:40  xplat
+ * Revision 1.4.6.2  2002-09-17 15:35:04  xplat
+ * GNU indent normalization.
+ *
+ * Revision 1.4.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
  * Revision 1.4  1998/12/14 13:17:35  nop
