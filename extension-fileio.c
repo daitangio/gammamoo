@@ -54,7 +54,7 @@ const char *raw_bytes_to_clean(const char *buffer, int buflen) {
   for (i = 0; i < buflen; i++) {
 	 unsigned char	c = buffer[i];
 	 
-	 if (isgraph(c)  ||  c == ' ')
+	 if (isgraph(c)  ||  c == ' ' || c == '\t')
 		stream_add_char(s, c);
 	 /* else drop it on the floor */
   }
@@ -127,7 +127,7 @@ int notify_bytes(Objid player, const char *bytes, int len);
  ***************************************************************/
 
 char file_package_name[]    = "FIO";
-char file_package_version[] = "1.0";
+char file_package_version[] = "1.5p1";
 
 
 /***************************************************************

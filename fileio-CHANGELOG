@@ -1,3 +1,9 @@
+Version 1.5p1 - Dec 97
+----------------------
+ - Fixed bug where tabs were not included in the input stream
+ - Added CHANGELOG to the distribution
+ - Added README
+
 Version 1.5
 -----------
  - First version maintained by Andy Bakun.
