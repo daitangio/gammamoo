@@ -249,6 +249,9 @@ list2str(Var * args)
 	case TYPE_LIST:
 	    stream_add_string(str, "{list}");
 	    break;
+	case TYPE_WAIF:
+	    stream_add_string(str, "{waif}");
+	    break;
 	default:
 	    panic("LIST2STR: Impossible var type.\n");
 	}
@@ -318,6 +321,10 @@ print_to_stream(Var v, Stream * s)
 	    }
 	    stream_add_char(s, '}');
 	}
+	break;
+    case TYPE_WAIF:
+	stream_printf(s, "[[class = #%d, owner = #%d]]",
+		v.v.waif->class, v.v.waif->owner);
 	break;
     default:
 	errlog("PRINT_TO_STREAM: Unknown Var type = %d\n", v.type);
@@ -1139,11 +1146,14 @@ register_list(void)
 }
 
 
-char rcsid_list[] = "$Id: list.c,v 1.6 2001-03-12 00:16:29 bjj Exp $";
+char rcsid_list[] = "$Id: list.c,v 1.6.2.1 2002-08-29 05:44:24 bjj Exp $";
 
 /* 
  * $Log: list.c,v $
- * Revision 1.6  2001-03-12 00:16:29  bjj
+ * Revision 1.6.2.1  2002-08-29 05:44:24  bjj
+ * Add WAIF type as distributed in version 0.95 (one small merge).
+ *
+ * Revision 1.6  2001/03/12 00:16:29  bjj
  * bf_crypt now passes the entire second argument as the salt to
  * the C crypt() routine.  This works fine for traditional DES crypts
  * and supports modern modular crypts like FreeBSD's.  This just makes

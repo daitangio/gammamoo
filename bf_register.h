@@ -27,10 +27,14 @@ extern void register_property(void);
 extern void register_server(void);
 extern void register_tasks(void);
 extern void register_verbs(void);
+extern void register_waif(void);
 
 /* 
  * $Log: bf_register.h,v $
- * Revision 1.2  1998-12-14 13:17:29  nop
+ * Revision 1.2.2.1  2002-08-29 05:44:23  bjj
+ * Add WAIF type as distributed in version 0.95 (one small merge).
+ *
+ * Revision 1.2  1998/12/14 13:17:29  nop
  * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
  *
  * Revision 1.1.1.1  1997/03/03 03:45:02  nop

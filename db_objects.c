@@ -92,6 +92,7 @@ dbpriv_new_object(void)
     ensure_new_object();
     o = objects[num_objects] = mymalloc(sizeof(Object), M_OBJECT);
     o->id = num_objects;
+    o->waif_propdefs = NULL;
     num_objects++;
 
     return o;
@@ -550,11 +551,14 @@ dbpriv_set_all_users(Var v)
     all_users = v;
 }
 
-char rcsid_db_objects[] = "$Id: db_objects.c,v 1.4 1998-12-14 13:17:36 nop Exp $";
+char rcsid_db_objects[] = "$Id: db_objects.c,v 1.4.2.1 2002-08-29 05:44:23 bjj Exp $";
 
 /* 
  * $Log: db_objects.c,v $
- * Revision 1.4  1998-12-14 13:17:36  nop
+ * Revision 1.4.2.1  2002-08-29 05:44:23  bjj
+ * Add WAIF type as distributed in version 0.95 (one small merge).
+ *
+ * Revision 1.4  1998/12/14 13:17:36  nop
  * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
  *
  * Revision 1.3  1997/07/07 03:24:53  nop
