@@ -441,8 +441,8 @@ expr:
 		    } else {
 			if (e->kind == EXPR_RANGE)
 			    e = e->e.range.base;
-			while (e->kind == EXPR_INDEX)
-			    e = e->e.bin.lhs;
+			while ((e->kind == EXPR_INDEX) || (e->kind == EXPR_HOT))
+			    e = e->kind == EXPR_INDEX ? e->e.bin.lhs : e->e.hot.expr;
 			if (e->kind != EXPR_ID  &&  e->kind != EXPR_PROP)
 			    yyerror("Illegal expression on left side of"
 				    " assignment.");
@@ -1295,11 +1295,14 @@ parse_list_as_program(Var code, Var *errors)
     return program;
 }
 
-char rcsid_parser[] = "$Id: parser.y,v 1.2.6.1 2002-09-12 05:57:40 xplat Exp $";
+char rcsid_parser[] = "$Id: parser.y,v 1.2.6.2 2002-09-15 06:28:32 xplat Exp $";
 
 /* 
  * $Log: parser.y,v $
- * Revision 1.2.6.1  2002-09-12 05:57:40  xplat
+ * Revision 1.2.6.2  2002-09-15 06:28:32  xplat
+ * Fixed bugs revealed by smoke test.
+ *
+ * Revision 1.2.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
  * Revision 1.2  1998/12/14 13:18:45  nop
