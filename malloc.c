@@ -58,8 +58,8 @@ int malloc_dummy;		/* Prevent `empty compilation unit' warning */
 char rcsid_malloc[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:59:50  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

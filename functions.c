@@ -426,8 +426,8 @@ register_functions(void)
 char rcsid_functions[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.6  1996/04/19  01:20:49  pavel
  * Fixed bug in how $bf_FOO() verbs are called to override built-in functions.

@@ -177,8 +177,8 @@ free_pattern(Pattern p)
 char rcsid_pattern[] = "$Id";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/05/12  21:33:02  pavel
  * Fixed memory leak in case of a malformed pattern.  Release 1.8.0p5.

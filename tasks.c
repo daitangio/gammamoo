@@ -1957,8 +1957,8 @@ register_tasks(void)
 char rcsid_tasks[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.8  1996/04/08  01:03:04  pavel
  * Fixed panic when input was processed for an invalid positive object.

@@ -695,8 +695,8 @@ unparse_to_stderr(Program *p, int fully_parenthesize, int indent_lines,
 char rcsid_unparse[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/02/18  23:21:00  pavel
  * Fixed unparsing of expression `X.Y', where X is an integer, to add a space

@@ -159,8 +159,8 @@ extern int	read_active_connections(void);
 #endif /* Server_H */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/04/08  01:07:52  pavel
  * Made get_server_option() public.  Release 1.8.0p3.

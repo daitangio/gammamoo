@@ -110,8 +110,8 @@ extern db_verb_handle	find_verb_for_programming(Objid player,
 #endif /* !Tasks_H */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/19  07:10:22  pavel
  * Added run_server_program_task() for use from emergency mode.

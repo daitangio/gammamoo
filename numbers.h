@@ -32,8 +32,8 @@ extern Var		do_modulus(Var, Var);
 extern Var		do_power(Var, Var);
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 1.1  1996/02/08  07:28:25  pavel
  * Initial revision

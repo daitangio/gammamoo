@@ -541,8 +541,8 @@ dbpriv_set_all_users(Var v)
 char rcsid_db_objects[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/04/08  00:42:11  pavel
  * Adjusted computation in `db_object_bytes()' to account for change in the

@@ -291,8 +291,8 @@
 #endif /* !Options_h */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/19  07:13:35  pavel
  * Changed CONNECT_TIMEOUT into DEFAULT_CONNECT_TIMEOUT.  Release 1.8.0p2.

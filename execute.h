@@ -126,8 +126,8 @@ extern int	read_activ(activation *a, int which_vector);
 #endif
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:03  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:03  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/10  01:20:08  pavel
  * Added new `caller()' entry point, for use by built-in fns.  Release 1.8.0.

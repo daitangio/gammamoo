@@ -90,8 +90,8 @@ extern Byte    *pc_for_bi_func_data(void);
 #endif
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:03  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:03  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/04/19  01:22:04  pavel
  * Added tail_call_pack() declaration and patches to allow generation of the

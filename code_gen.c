@@ -1180,8 +1180,8 @@ generate_code(Stmt *stmt, DB_Version version)
 char rcsid_code_gen[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.4  1996/02/08  07:21:08  pavel
  * Renamed TYPE_NUM to TYPE_INT.  Added support for exponentiation expression,

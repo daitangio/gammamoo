@@ -214,8 +214,8 @@ extern void     free_stmt(Stmt *);
 #endif /* !AST_h */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/02/08  05:59:43  pavel
  * Updated copyright notice for 1996.  Added exponentiation expression, named

@@ -152,8 +152,8 @@ register_log(void)
 char rcsid_log[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/04/08  01:06:25  pavel
  * Added `set_log_file()' entry point.  Made logging print undated messages to

@@ -245,8 +245,8 @@ extern void		network_shutdown(void);
 #endif /* Network_H */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.4  1996/03/10  01:15:13  pavel
  * Added support for `connection_option()'.  Release 1.8.0.

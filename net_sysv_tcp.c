@@ -367,8 +367,8 @@ proto_open_connection(Var arglist, int *read_fd, int *write_fd,
 char rcsid_net_sysv_tcp[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/10  01:13:36  pavel
  * Moved definition of DEFAULT_PORT to options.h.  Release 1.8.0.

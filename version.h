@@ -58,8 +58,8 @@ extern int		check_version(DB_Version);
 #endif /* !Version_H */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/04/19  01:25:21  pavel
  * Added somewhat bogus DBV_BFBugFixed version.  Release 1.8.0p4.

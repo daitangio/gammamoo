@@ -404,8 +404,8 @@ dbio_write_forked_program(Program *program, int f_index)
 char rcsid_db_io[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/19  07:16:12  pavel
  * Increased precision of floating-point numbers printed in the DB file.

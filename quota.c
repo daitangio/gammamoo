@@ -69,8 +69,8 @@ incr_quota(Objid player)
 char rcsid_quota[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:54:04  pavel
  * Renamed TYPE_NUM to TYPE_INT.  Updated copyright notice for 1996.

@@ -65,8 +65,8 @@ extern int	vfscanf(FILE *, const char *, va_list);
 #endif /* !My_Stdio_H */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:05  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:05  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/02/08  06:02:04  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

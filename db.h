@@ -517,8 +517,8 @@ extern void		db_delete_verb(db_verb_handle);
 #endif /* !DB_h */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/05/12  21:31:37  pavel
  * Added documentation of the memory-management policy for db_add_verb().

@@ -100,8 +100,8 @@ set_rt_env_var(Var *env, int slot, Var v)
 char rcsid_rt_env[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  07:13:03  pavel
  * Renamed TYPE_NUM to TYPE_INT.  Made fill_in_rt_consts() version-dependent.

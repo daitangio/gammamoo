@@ -58,8 +58,8 @@ extern void	free_names(Names *);
 #endif /* !Sym_Table_h */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/03/10  01:15:53  pavel
  * Removed a number of obsolete declarations.  Release 1.8.0.

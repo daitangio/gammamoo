@@ -54,8 +54,8 @@ extern const char      *binary_to_raw_bytes(const char *binary, int *rawlen);
 #endif
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.4  1996/02/08  06:08:07  pavel
  * Moved become_number and compare_ints to number.h.  Updated copyright notice

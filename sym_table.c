@@ -150,8 +150,8 @@ free_names(Names *names)
 char rcsid_sym_table[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/03/10  01:16:32  pavel
  * Removed a bunch of obsolete unused functions.  Release 1.8.0.

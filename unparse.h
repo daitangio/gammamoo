@@ -42,8 +42,8 @@ extern const char      *unparse_error(enum error); /* E_NONE -> "No error" */
 #endif
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:08:46  pavel
  * Added unparse_to_file() and unparse_to_stderr().  Updated copyright notice

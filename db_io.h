@@ -91,8 +91,8 @@ extern void		dbio_write_program(Program *);
 extern void		dbio_write_forked_program(Program *prog, int f_index);
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997/03/03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/02/08  06:28:21  pavel
  * Added dbio_input_version, dbio_read/write_float().  Made dbio_read_program
