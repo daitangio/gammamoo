@@ -30,9 +30,9 @@ typedef struct {
 } Parser_Client;
 
 typedef enum {
-    PMODE_COMPAT,
-    PMODE_VERB,
-    PMODE_FORK
+    PARSE_COMPAT,
+    PARSE_VERB,
+    PARSE_FORK
 } Parser_Mode;
 
 extern Program *parse_program(DB_Version, Parser_Client, void *,
@@ -43,7 +43,10 @@ extern Program *parse_list_as_program(Var code, Var * errors);
 
 /* 
  * $Log: parser.h,v $
- * Revision 1.3.6.2  2002-10-27 22:48:12  xplat
+ * Revision 1.3.6.3  2002-10-29 01:00:22  xplat
+ * Changed PMODE_* to PARSE_* for clarity.
+ *
+ * Revision 1.3.6.2  2002/10/27 22:48:12  xplat
  * Changes to support PCs located in vectors other than MAIN_VECTOR.
  *
  * Revision 1.3.6.1  2002/09/12 05:57:40  xplat
