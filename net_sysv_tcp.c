@@ -363,13 +363,17 @@ proto_open_connection(Var arglist, int *read_fd, int *write_fd,
 
 char rcsid_net_sysv_tcp[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2.12.1  2003/06/01 12:42:30  wrog
-/* added cmdline options -a (source address) +O/-O (enable/disable outbound network)
 /*
-/* Revision 1.2  1997/03/03 04:19:09  nop
-/* GNU Indent normalization
-/*
+ * $Log$
+ * Revision 1.2.12.2  2003/06/01 13:15:18  wrog
+ * Fixed log / comment braindeath
+ *
+ * Revision 1.2.12.1  2003/06/01 12:42:30  wrog
+ * added cmdline options -a (source address) +O/-O (enable/disable outbound network)
+ *
+ * Revision 1.2  1997/03/03 04:19:09  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:02  nop
  * LambdaMOO 1.8.0p5
  *
