@@ -1,9 +1,9 @@
   File I/O
-  Ken Fox
-  February 19, 1997
+  Ken Fox and Andy Bakun
+  October 5, 1997
 
   This is the documentation for the File I/O (FIO) patch for the Lamb-
-  daMOO server.	FIO adds several administrator-only builtins for manip-
+  daMOO server.  FIO adds several administrator-only builtins for manip-
   ulating files from inside the MOO.  Security is enforced by making
   these builtins executable with wizard permissions only as well as only
   allowing access to a directory under the current directory (the one
@@ -11,7 +11,7 @@
 
   1.  Introduction
 
-  1.1.	Purpose
+  1.1.  Purpose
 
   This patch to the LambdaMOO server adds several new builtins that
   allow the manipulation of files from MOO code.   The new builtins are
@@ -20,9 +20,9 @@
 
   Granting MOO code direct access to files opens a hole in the otherwise
   fairly good wall that the LambdaMOO server puts up between the OS and
-  the database.	The patch contains the risk as much as possible by
+  the database.  The patch contains the risk as much as possible by
   restricting where files can be opened and allowing the new builtins to
-  be called by wizard permissions only.	It is still possible execute
+  be called by wizard permissions only.  It is still possible execute
   various forms denial of service attacks, but the MOO server allows
   this form of attack as well.
 
@@ -31,9 +31,9 @@
   functions and for the front end.  It is not recommended that you use
   these functions directly.
 
-  1.2.	Copyright, License, and Disclaimer
+  1.2.  Copyright, License, and Disclaimer
 
-  Copyright 1996, 1997 by Ken Fox.
+  Copyright 1996, 1997 by Ken Fox.  Copyright 1997 by Andy Bakun.
 
   All Rights Reserved
 
@@ -43,19 +43,19 @@
   both that copyright notice and this permission notice appear in
   supporting documentation.
 
-  KEN FOX DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
-  INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
-  EVENT SHALL KEN FOX BE LIABLE FOR ANY SPECIAL, INDIRECT OR
-  CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
-  USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-  OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-  PERFORMANCE OF THIS SOFTWARE.
+  KEN FOX AND ANDY BAKUN DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+  SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+  FITNESS, IN NO EVENT SHALL KEN FOX OR ANDY BAKUN BE LIABLE FOR ANY
+  SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+  RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
   2.  Installation
 
   Most of the new code for this patch are in the files extension-
   fileio.c and extension-fileio.h.  These files contain the header and
-  implementation for all of the new builtin functions.	One line has to
+  implementation for all of the new builtin functions.  One line has to
   be added to bf_register.h and a related line must be added
   functions.c.
 
@@ -66,7 +66,7 @@
   If you are going to use patch to install it, just copy fileio.patch
   into the server directory and apply the patch:
 
-	 patch < fileio.patch
+         patch < fileio.patch
 
   It is recommended that you use patch to install it, but you can also
   manually make the changes to the server source.  First, copy the
@@ -74,11 +74,11 @@
   untarred server source.  Add extension-fileio.c to the CSRCS line of
   Makefile.in, add
 
-	  extern void register_fileio(void);
+          extern void register_fileio(void);
 
   to bf_register.h and add
 
-	 register_fileio
+         register_fileio
 
   to the list of functions in functions.c.
 
@@ -86,7 +86,7 @@
   run in.  Only files in this directory will be accessible using this
   patch.
 
-	 mkdir files
+         mkdir files
 
   Pathnames passed to these functions are restricted to prevent access
   outside this directory.
@@ -103,44 +103,44 @@
   addition to the ones outlined in "Error handling".
 
   WARNING: All of the actual I/O functions in this package are
-  implemented using the stdio portion of libc.	Your system's
+  implemented using the stdio portion of libc.  Your system's
   documentation may have applicable warnings for these functions.  When
   appropriate, the function documentation will say which libc function
   is used.
 
-  3.1.	Error handling
+  3.1.  Error handling
 
-  Errors are always handled by raising some kind of exception.	The
+  Errors are always handled by raising some kind of exception.  The
   following exceptions are defined:
 
      ``E_FILE''
-	This is raised when a stdio call returned an error value.  It is
-	the string value "E_FILE", not a new value of type error.  CODE
-	is set to "E_FILE", MSG is set to the return of strerror()
-	(which may vary from system to system), and VALUE depends on
-	which function raised the error.  When a function fails because
-	the stdio function returned EOF, VALUE is set to "EOF".
+        This is raised when a stdio call returned an error value.  It is
+        the string value "E_FILE", not a new value of type error.  CODE
+        is set to "E_FILE", MSG is set to the return of strerror()
+        (which may vary from system to system), and VALUE depends on
+        which function raised the error.  When a function fails because
+        the stdio function returned EOF, VALUE is set to "EOF".
 
      E_INVARG
-	This is raised for a number of reasons.	The common reasons are
-	an invalid FHANDLE being passed to a function and an invalid
-	pathname specification.	In each of these cases MSG will be set
-	to the cause and VALUE will be the offending value.
+        This is raised for a number of reasons.  The common reasons are
+        an invalid FHANDLE being passed to a function and an invalid
+        pathname specification.  In each of these cases MSG will be set
+        to the cause and VALUE will be the offending value.
 
      E_PERM
-	This is raised when any of these functions are called with non-
-	wizardly permissions.
+        This is raised when any of these functions are called with non-
+        wizardly permissions.
 
-  3.2.	Version
+  3.2.  Version
 
   Function: STR file_version()
 
   Returns the package shortname/version number of this package e.g.
 
-	 ;file_version()
-	 => "FIO/1.0"
+         ;file_version()
+         => "FIO/1.5"
 
-  3.3.	Opening and closing of files and related functions
+  3.3.  Opening and closing of files and related functions
 
   File streams are associated with FHANDLES.  FHANDLES are similar to
   the FILE* using stdio.  You get an FHANDLE from file_open.  You should
@@ -156,7 +156,7 @@
   Raises: E_INVARG if mode is not a valid mode, E_QUOTA if too many
   files open
   This opens a file specified by pathname and returns an FHANDLE for it.
-  It ensures pathname is legal.	mode is a string of characters
+  It ensures pathname is legal.  mode is a string of characters
   indicating what mode the file is opened in.  The mode string is four
   characters.
 
@@ -180,7 +180,7 @@
   o  a+ opens the file for reading and writing, creates it if does not
      exist and positions the stream at the end of the file.
 
-     The third character is either (t)ext or (b)inary.	In text mode,
+     The third character is either (t)ext or (b)inary.  In text mode,
      data is written as-is from the MOO and data read in by the MOO is
      stripped of unprintable characters.  In binary mode, data is
      written filtered through the binary-string->raw-bytes conversion
@@ -192,7 +192,7 @@
      mode, reading an ESC from a file results in the ESC getting
      stripped.
 
-  It is not recommended that files containing unprintable ASCII	data be
+  It is not recommended that files containing unprintable ASCII  data be
   read in text mode, for obvious reasons.
 
   The final character is either 'n' or 'f'.  If this character is that
@@ -222,7 +222,7 @@
 
   Returns the mode the file associated with fh was opened in.
 
-  3.4.	Input and Ouput operations
+  3.4.  Input and Ouput operations
 
   3.4.1.  file_readline
 
@@ -239,7 +239,7 @@
   Function: LIST file_readlines(FHANDLE fh, INT start, INT end)
 
   Rewinds the file and then reads the specified lines from the file,
-  returning them as a list of strings.	After this operation, the stream
+  returning them as a list of strings.  After this operation, the stream
   is positioned right after the last line read.
 
   Not recommended for use on files in binary mode.
@@ -311,7 +311,7 @@
 
   This is implemented using feof().
 
-  3.5.	Housekeeping operations
+  3.5.  Housekeeping operations
 
   3.5.1.  file_size, file_mode, file_last_access, file_last_modify,
   file_last_change
@@ -389,7 +389,7 @@
 
   Function: LIST file_list(STR pathname, [ANY detailed])
 
-  Attempts to list the contents of the given directory.	Returns a list
+  Attempts to list the contents of the given directory.  Returns a list
   of files in the directory.  If the detailed argument is provided and
   true, then the list contains detailed entries, otherwise it contains a
   simple list of names.
