@@ -35,7 +35,7 @@ tcp_arguments(int argc, char **argv, int *pport)
 	    outbound_network_enabled = (argv[0][0] == '+');
 #else
 	    if (argv[0][0] == '+') {
-		fprintf(stderr, "Outbound network not supported.\n", argv[0]);
+		fprintf(stderr, "Outbound network not supported.\n");
 		oklog("CMDLINE: *** Ignoring %s (outbound network not supported)\n", argv[0]);
 	    }
 #endif
@@ -76,6 +76,9 @@ char rcsid_net_tcp[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.1.2.2  2003/06/10 00:14:52  wrog
+ * fixed printf warning
+ *
  * Revision 1.1.2.1  2003/06/01 12:42:30  wrog
  * added cmdline options -a (source address) +O/-O (enable/disable outbound network)
  *
