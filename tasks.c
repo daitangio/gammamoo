@@ -418,7 +418,7 @@ end_programming(tqueue * tq)
 	    s.nerrors = 0;
 	    s.input = stream_contents(tq->program_stream);
 
-	    program = parse_program(current_version, client, &s, PMODE_VERB, 0, 0);
+	    program = parse_program(current_version, client, &s, PMODE_VERB, 0, 0, 0);
 
 	    sprintf(buf, "%d error(s).", s.nerrors);
 	    notify(player, buf);
@@ -2014,6 +2014,9 @@ char rcsid_tasks[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.9.6.4  2002/10/27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.9.6.3  2002/09/17 15:35:06  xplat
  * GNU indent normalization.
  *

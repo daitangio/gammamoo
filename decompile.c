@@ -944,9 +944,9 @@ program_to_tree(Program * prog, int vector, int pc_vector, int pc, int mark_pc)
 }
 
 Stmt *
-decompile_for_resume(Program * prog, int vector, int pc)
+decompile_for_resume(Program * prog, int vector, int pc_vector, int pc)
 {
-    return program_to_tree(prog, MAIN_VECTOR, vector, pc, 1);
+    return program_to_tree(prog, vector, pc_vector, pc, 1);
 }
 
 Stmt *
@@ -1090,6 +1090,9 @@ char rcsid_decompile[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.5  2002/10/27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.5.6.4  2002/09/17 15:35:04  xplat
  * GNU indent normalization.
  *

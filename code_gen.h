@@ -19,10 +19,13 @@
 #include "program.h"
 #include "version.h"
 
-extern Program *generate_code(Stmt *, DB_Version, int *);
+extern Program *generate_code(Stmt *, DB_Version, int *, int *);
 
 /* 
  * $Log$
+ * Revision 1.3.6.2  2002/10/27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.3.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *

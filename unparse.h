@@ -42,12 +42,15 @@ extern const char *unparse_error(enum error);	/* E_NONE -> "No error" */
 extern void unparse_program2(Program *, Unparser_Receiver, void *,
 			     int fully_parenthesize,
 			     int indent_lines, int f_index,
-			     int pc);
+			     int pc_vector, int pc);
 
 #endif
 
 /* 
  * $Log$
+ * Revision 1.3.6.2  2002/10/27 22:48:13  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.3.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *

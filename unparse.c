@@ -716,15 +716,15 @@ unparse_program(Program * p, Unparser_Receiver r, void *data,
 		int fully_parenthesize, int indent_lines, int f_index)
 {
     unparse_program2(p, r, data, fully_parenthesize, indent_lines,
-		     f_index, -1);
+		     f_index, MAIN_VECTOR, -1);
 }
 
 void
 unparse_program2(Program * p, Unparser_Receiver r, void *data,
 		 int fully_parenthesize, int indent_lines, int f_index,
-		 int pc)
+		 int pc_vector, int pc)
 {
-    Stmt *stmt = decompile_for_resume(p, f_index, pc);
+    Stmt *stmt = decompile_for_resume(p, f_index, pc_vector, pc);
 
     prog = p;
     receiver = r;
@@ -760,6 +760,9 @@ char rcsid_unparse[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.3.6.4  2002/10/27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.3.6.3  2002/09/17 15:35:06  xplat
  * GNU indent normalization.
  *

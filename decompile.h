@@ -20,10 +20,13 @@
 
 extern Stmt *decompile_program(Program * program, int vector);
 extern int find_line_number(Program * program, int vector, int pc);
-extern Stmt *decompile_for_resume(Program * program, int vector, int pc);
+extern Stmt *decompile_for_resume(Program * program, int vector, int pc_vector, int pc);
 
 /* 
  * $Log$
+ * Revision 1.3.6.2  2002/10/27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
  * Revision 1.3.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
