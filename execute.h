@@ -24,6 +24,7 @@
 #include "parse_cmd.h"
 #include "program.h"
 #include "structures.h"
+#include "sym_table.h"
 
 typedef struct {
     Program *prog;
@@ -127,7 +128,7 @@ void write_rt_env(const char **var_names, Var * rt_env,
 int read_rt_env(const char ***old_names, Var ** rt_env,
 		int *old_size);
 Var *reorder_rt_env(Var * old_rt_env, const char **old_names,
-		    int old_size, Program * prog);
+		    int old_size, Names * new_names);
 extern void write_activ(activation a);
 extern int read_activ(activation * a, int which_vector);
 
@@ -135,7 +136,10 @@ extern int read_activ(activation * a, int which_vector);
 
 /* 
  * $Log: execute.h,v $
- * Revision 1.6  2002-08-18 09:47:26  bjj
+ * Revision 1.6.6.1  2002-09-12 05:57:40  xplat
+ * Changes for inline PC saving and patch tags in the on-disk DB.
+ *
+ * Revision 1.6  2002/08/18 09:47:26  bjj
  * Finally made free_activation() take a pointer after noticing how !$%^&
  * much time it was taking in a particular profiling run.
  *

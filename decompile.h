@@ -20,10 +20,14 @@
 
 extern Stmt *decompile_program(Program * program, int vector);
 extern int find_line_number(Program * program, int vector, int pc);
+extern Stmt *decompile_for_resume(Program * program, int vector, int pc);
 
 /* 
  * $Log: decompile.h,v $
- * Revision 1.3  1998-12-14 13:17:41  nop
+ * Revision 1.3.6.1  2002-09-12 05:57:40  xplat
+ * Changes for inline PC saving and patch tags in the on-disk DB.
+ *
+ * Revision 1.3  1998/12/14 13:17:41  nop
  * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
  *
  * Revision 1.2  1997/03/03 04:18:33  nop
