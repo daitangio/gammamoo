@@ -27,6 +27,9 @@ extern void register_property(void);
 extern void register_server(void);
 extern void register_tasks(void);
 extern void register_verbs(void);
+/************************/
+extern void register_fileio(void);
+/************************/
 
 /* $Log$
 /* Revision 1.1  1997/03/03 03:45:02  nop
