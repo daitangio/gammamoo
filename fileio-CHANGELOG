@@ -1,0 +1,9 @@
+Version 1.5
+-----------
+ - First version maintained by Andy Bakun.
+ - Fixed bugs where file_eof and file_tell didn't return meaningful results
+   didn't raise errors on invalid file descriptors.
+
+Versions < 1.5
+--------------
+Maintained by Ken Fox.  Really, the initial public version.
