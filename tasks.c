@@ -776,15 +776,14 @@ enqueue_input_task(tqueue * tq, const char *input, int at_front, int binary)
 
     t->t.input.next_itail = 0;
     if (at_front && tq->first_input) {	/* if nothing there, front == back */
-	t->next = tq->first_input;
-	tq->first_input = t;
-
 	if ((tq->first_input->kind == TASK_OOB) != (t->kind == TASK_OOB)) {
 	    t->t.input.next_itail = tq->first_itail;
 	    tq->first_itail = t;
 	    if (tq->last_itail == &(tq->first_itail))
 		tq->last_itail = &(t->t.input.next_itail);
 	}
+	t->next = tq->first_input;
+	tq->first_input = t;
     }
     else {
 	if (tq->first_input && (((*(tq->last_itail))->kind == TASK_OOB)
@@ -2101,6 +2100,9 @@ char rcsid_tasks[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.10.2.5  2004/05/20 19:40:32  wrog
+ * fixed force_input(,,1) bug
+ *
  * Revision 1.10.2.4  2003/06/11 10:57:27  wrog
  * fixed  non-blocking read() to only grab inband lines
  * fixed "hold-input" to not hold up out-of-band lines
