@@ -48,13 +48,27 @@ enum error {
  * raw form in the DB.
  */
 typedef enum {
-    TYPE_INT, TYPE_OBJ, TYPE_STR, TYPE_ERR, TYPE_LIST,	/* user-visible */
+    TYPE_INT, TYPE_OBJ, _TYPE_STR, TYPE_ERR, _TYPE_LIST, /* user-visible */
     TYPE_CLEAR,			/* in clear properties' value slot */
     TYPE_NONE,			/* in uninitialized MOO variables */
     TYPE_CATCH,			/* on-stack marker for an exception handler */
     TYPE_FINALLY,		/* on-stack marker for a TRY-FINALLY clause */
-    TYPE_FLOAT			/* floating-point number; user-visible */
+    _TYPE_FLOAT			/* floating-point number; user-visible */
 } var_type;
+
+/* Types which have external data should be marked with the TYPE_COMPLEX_FLAG
+ * so that free_var/var_ref/var_dup can recognize them easily.  This flag is
+ * only set in memory.  The original _TYPE values are used in the database
+ * file and returned to verbs calling typeof().  This allows the inlines to
+ * be extremely cheap (both in space and time) for simple types like oids
+ * and ints.
+ */
+#define TYPE_DB_MASK		0x7f
+#define TYPE_COMPLEX_FLAG	0x80
+
+#define TYPE_STR		(_TYPE_STR | TYPE_COMPLEX_FLAG)
+#define TYPE_FLOAT		(_TYPE_FLOAT | TYPE_COMPLEX_FLAG)
+#define TYPE_LIST		(_TYPE_LIST | TYPE_COMPLEX_FLAG)
 
 #define TYPE_ANY ((var_type) -1)	/* wildcard for use in declaring built-ins */
 #define TYPE_NUMERIC ((var_type) -2)	/* wildcard for (integer or float) */
@@ -78,9 +92,15 @@ extern Var zero;		/* useful constant */
 #endif				/* !Structures_h */
 
 /* $Log: structures.h,v $
-/* Revision 1.2  1997-03-03 04:19:29  nop
-/* GNU Indent normalization
+/* Revision 1.2.2.1  1997-03-20 18:07:52  bjj
+/* Add a flag to the in-memory type identifier so that inlines can cheaply
+/* identify Vars that need actual work done to ref/free/dup them.  Add the
+/* appropriate inlines to utils.h and replace old functions in utils.c with
+/* complex_* functions which only handle the types with external storage.
 /*
+ * Revision 1.2  1997/03/03 04:19:29  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:04  nop
  * LambdaMOO 1.8.0p5
  *
