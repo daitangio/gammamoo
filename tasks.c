@@ -1424,7 +1424,7 @@ bf_task_id(Var arglist, Byte next, void *vdata, Objid progr)
 }
 
 static int
-activation_bytes(activation *ap)
+activation_bytes(activation * ap)
 {
     int total = sizeof(activation);
     Var *v;
@@ -2014,6 +2014,9 @@ char rcsid_tasks[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.9.6.2  2002/09/17 15:04:07  xplat
+ * Updated to INLINEPC_updater_1 in trunk.
+ *
  * Revision 1.9.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *

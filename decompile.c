@@ -210,7 +210,7 @@ decompile(Bytecodes bc, Byte * start, Byte * end, Stmt ** stmt_sink,
 	    e->e.id = PUSH_CLEAR_n_INDEX(op);
 	    push_expr(HOTX_OP(e));
 	    continue;
-#endif /* BYTECODE_REDUCE_REF */
+#endif				/* BYTECODE_REDUCE_REF */
 	} else if (IS_PUT_n(op)) {
 	    e = alloc_expr(EXPR_ID);
 	    e->e.id = PUT_n_INDEX(op);
@@ -1090,6 +1090,9 @@ char rcsid_decompile[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.3  2002/09/17 15:03:56  xplat
+ * Updated to INLINEPC_updater_1 in trunk.
+ *
  * Revision 1.5.6.2  2002/09/12 07:20:50  xplat
  * Early comments from Ben.
  *
