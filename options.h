@@ -300,6 +300,9 @@
 #ifndef OUT_OF_BAND_PREFIX
 #define OUT_OF_BAND_PREFIX ""
 #endif
+#ifndef OUT_OF_BAND_QUOTE_PREFIX
+#define OUT_OF_BAND_QUOTE_PREFIX ""
+#endif
 
 #if PATTERN_CACHE_SIZE < 1
 #  error Illegal match() pattern cache size!
@@ -381,6 +384,9 @@
 
 /* 
  * $Log$
+ * Revision 1.8.10.3  2004/05/21 00:02:59  wrog
+ * allow for OUT_OF_BAND_QUOTE_PREFIX being undefined
+ *
  * Revision 1.8.10.2  2003/06/11 10:36:45  wrog
  * added OUT_OF_BAND_QUOTE_PREFIX
  *
