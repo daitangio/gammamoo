@@ -121,6 +121,15 @@ match_object(Objid player, const char *name)
     Var matched_object;
     Var match_object_args;
 
+    match_object_args = new_list(1);
+    match_object_args.v.list[1].type = TYPE_STR;
+    match_object_args.v.list[1].v.str = str_dup(name);
+
+    run_server_task(player, SYSTEM_OBJECT, "match_object",
+                    match_object_args, name, &matched_object);
+    if (matched_object.type == TYPE_OBJ)
+	return matched_object.v.obj;
+
     if (name[0] == '\0')
 	return NOTHING;
     if (name[0] == '#') {
@@ -137,14 +146,6 @@ match_object(Objid player, const char *name)
 	return player;
     if (!mystrcasecmp(name, "here"))
 	return db_object_location(player);
-    match_object_args = new_list(1);
-    match_object_args.v.list[1].type = TYPE_STR;
-    match_object_args.v.list[1].v.str = str_dup(name);
-
-    run_server_task(player, SYSTEM_OBJECT, "match_object",
-                    match_object_args, name, &matched_object);
-    if (matched_object.type == TYPE_OBJ)
-	return matched_object.v.obj;
 
     return match_contents(player, name);
 }
