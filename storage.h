@@ -32,7 +32,7 @@ typedef enum Memory_Type {
 
     M_RT_STACK, M_RT_ENV, M_BI_FUNC_DATA, M_VM,
 
-    M_REF_ENTRY, M_REF_TABLE, M_VC_ENTRY, M_VC_TABLE,
+    M_REF_ENTRY, M_REF_TABLE, M_VC_ENTRY, M_VC_TABLE, M_STRING_PTRS,
 
     Sizeof_Memory_Type
 
@@ -56,9 +56,15 @@ free_str(const char *s)
 #endif				/* Storage_h */
 
 /* $Log: storage.h,v $
-/* Revision 1.2.2.2  1997-03-21 15:19:24  bjj
-/* add myrealloc interface, inline free_str
+/* Revision 1.2.2.3  1997-05-20 03:01:34  nop
+/* parse_into_words was allocating pointers to strings as strings.  Predictably,
+/* the refcount prepend code was not prepared for this, causing unaligned memory
+/* access on the Alpha.  Added new M_STRING_PTRS allocation class that could
+/* be renamed to something better, perhaps.
 /*
+ * Revision 1.2.2.2  1997/03/21 15:19:24  bjj
+ * add myrealloc interface, inline free_str
+ *
  * Revision 1.2.2.1  1997/03/20 07:26:04  nop
  * First pass at the new verb cache.  Some ugly code inside.
  *

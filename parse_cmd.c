@@ -40,7 +40,7 @@ parse_into_words(char *input, int *nwords)
 
     if (!words) {
 	max_words = 50;
-	words = mymalloc(max_words * sizeof(char *), M_STRING);
+	words = mymalloc(max_words * sizeof(char *), M_STRING_PTRS);
     }
     while (*input == ' ')
 	input++;
@@ -48,7 +48,7 @@ parse_into_words(char *input, int *nwords)
     for (*nwords = 0; *input != '\0'; (*nwords)++) {
 	if (*nwords == max_words) {
 	    int new_max = max_words * 2;
-	    char **new = mymalloc(new_max * sizeof(char *), M_STRING);
+	    char **new = mymalloc(new_max * sizeof(char *), M_STRING_PTRS);
 	    int i;
 
 	    for (i = 0; i < max_words; i++)
@@ -249,12 +249,18 @@ free_parsed_command(Parsed_Command * pc)
 }
 
 
-char rcsid_parse_cmd[] = "$Id: parse_cmd.c,v 1.2 1997-03-03 04:19:14 nop Exp $";
+char rcsid_parse_cmd[] = "$Id: parse_cmd.c,v 1.2.2.1 1997-05-20 03:01:34 nop Exp $";
 
 /* $Log: parse_cmd.c,v $
-/* Revision 1.2  1997-03-03 04:19:14  nop
-/* GNU Indent normalization
+/* Revision 1.2.2.1  1997-05-20 03:01:34  nop
+/* parse_into_words was allocating pointers to strings as strings.  Predictably,
+/* the refcount prepend code was not prepared for this, causing unaligned memory
+/* access on the Alpha.  Added new M_STRING_PTRS allocation class that could
+/* be renamed to something better, perhaps.
 /*
+ * Revision 1.2  1997/03/03 04:19:14  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:01  nop
  * LambdaMOO 1.8.0p5
  *
