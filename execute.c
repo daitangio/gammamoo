@@ -3071,7 +3071,7 @@ reparse_for_upgrade(Stream * s, DB_Version old_version, Names ** orig_names, int
 
     contents = stream_contents(s);
     /* root activations must be treated carefully -- they may be disembodied fork vectors */
-    return parse_program(old_version, string_parser_client, &contents, (is_root ? PMODE_FORK : PMODE_VERB), orig_names, pc_vector, pc);
+    return parse_program(old_version, string_parser_client, &contents, (is_root ? PARSE_FORK : PARSE_VERB), orig_names, pc_vector, pc);
 }
 
 static int
@@ -3100,6 +3100,9 @@ char rcsid_execute[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.13.6.7  2002/10/29 01:00:13  xplat
+ * Changed PMODE_* to PARSE_* for clarity.
+ *
  * Revision 1.13.6.6  2002/10/27 22:48:12  xplat
  * Changes to support PCs located in vectors other than MAIN_VECTOR.
  *

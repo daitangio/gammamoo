@@ -307,7 +307,7 @@ dbio_read_program(DB_Version version, const char *(*fmtr) (void *), void *data)
     s.prev_char = '\n';
     s.fmtr = fmtr;
     s.data = data;
-    return parse_program(version, parser_client, &s, PMODE_VERB, 0, 0, 0);
+    return parse_program(version, parser_client, &s, PARSE_VERB, 0, 0, 0);
 }
 
 Program *
@@ -319,7 +319,7 @@ dbio_read_active_program(DB_Version version, const char *(*fmtr) (void *),
     s.prev_char = '\n';
     s.fmtr = fmtr;
     s.data = data;
-    return parse_program(version, parser_client, &s, PMODE_COMPAT, orig_names, pc_vector, pc);
+    return parse_program(version, parser_client, &s, PARSE_COMPAT, orig_names, pc_vector, pc);
 }
 
 Program *
@@ -330,7 +330,7 @@ dbio_read_forked_program(DB_Version version, const char *(*fmtr) (void *), void 
     s.prev_char = '\n';
     s.fmtr = fmtr;
     s.data = data;
-    return parse_program(version, parser_client, &s, PMODE_FORK, orig_names, 0, 0);
+    return parse_program(version, parser_client, &s, PARSE_FORK, orig_names, 0, 0);
 }
 
 
@@ -450,6 +450,9 @@ char rcsid_db_io[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.4  2002/10/29 01:00:09  xplat
+ * Changed PMODE_* to PARSE_* for clarity.
+ *
  * Revision 1.5.6.3  2002/10/27 22:48:12  xplat
  * Changes to support PCs located in vectors other than MAIN_VECTOR.
  *
