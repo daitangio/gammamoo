@@ -130,8 +130,13 @@ extern int read_activ(activation * a, int which_vector);
 
 /* 
  * $Log: execute.h,v $
- * Revision 1.7.2.1  2003-06-04 21:28:59  wrog
- * removed useless arguments from resume_from_previous_vm(), do_forked_task(); replaced current_task_kind with is_fg argument for do_task(); made enum task_kind internal to tasks.c
+ * Revision 1.7.2.2  2003-06-07 13:14:24  wrog
+ * fix log entry
+ *
+ * Revision 1.7.2.1  2003/06/04 21:28:59  wrog
+ * removed useless arguments from resume_from_previous_vm(), do_forked_task();
+ * replaced current_task_kind with is_fg argument for do_task();
+ * made enum task_kind internal to tasks.c
  *
  * Revision 1.7  2002/09/15 23:21:01  xplat
  * GNU indent normalization.
