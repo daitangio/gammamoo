@@ -11,6 +11,10 @@
 
 #include <dirent.h>
 
+/* some things are not defined in stdio on all systems -- AAB 06/03/97 */
+#include <sys/types.h>
+#include <errno.h>
+
 #include "my-unistd.h"
 
 #include "my-ctype.h"
@@ -31,6 +35,11 @@
 #include "log.h"
 
 #include "extension-fileio.h"
+
+/* apparently, not defined on some SysVish systems -- AAB 06/03/97 */
+typedef unsigned short umode_t;
+/* your system may define o_mode_t instead -- AAB 06/03/97 */
+/* typedef o_mode_t umode_t; */
 
 /*****************************************************
  * Utility functions
@@ -1323,65 +1332,70 @@ int file_list_select(const struct dirent *d) {
 static package
 bf_file_list(Var arglist, Byte next, void *vdata, Objid progr)
 {  
+  /* modified to use opendir/readdir which is slightly more "standard"
+     than the original scandir method.   -- AAB 06/03/97
+   */
   package r;
-  Var     rv, detail;
   const char *pathspec = arglist.v.list[1].v.str;
+  const char *real_pathname;
   int	detailed = (arglist.v.list[0].v.num > 1
 						? is_true(arglist.v.list[2])
 						: 0);
-  Stream *s;
-  const char *real_pathname;
-  struct dirent **dirlist;
-  struct stat buf;
-  int count, i, failed = 0;;
   
-  s = new_stream(64);
+    if(!file_verify_caller(progr)) {
+        r = file_raise_notokcall("file_list", progr);
+    } else if((real_pathname = file_resolve_path(pathspec)) == NULL) {
+        r =  file_raise_notokfilename("file_list", pathspec);
+    } else {
+        DIR *curdir;
+        Stream *s = new_stream(64);
+        int failed = 0;
+        struct stat buf;
+        Var     rv, detail;
+	struct dirent *curfile;
 
-  if(!file_verify_caller(progr)) {
-	 r = file_raise_notokcall("file_list", progr);
-  } else if((real_pathname = file_resolve_path(pathspec)) == NULL) {
-	 r =  file_raise_notokfilename("file_list", pathspec);
-  } else {
-	 if((count = scandir(real_pathname, &dirlist, file_list_select, alphasort)) == -1)
+	if (!(curdir = opendir (real_pathname)))
 		r = file_raise_errno(pathspec);
-	 else {
-		rv = new_list(count);
-		for(i = 0; i < count; i++) {
-		  if(detailed) {
-			 stream_add_string(s, real_pathname);
-			 stream_add_char(s, '/');
-			 stream_add_string(s, dirlist[i]->d_name);
-			 if(stat(reset_stream(s), &buf) != 0) {
-				failed = 1;
-				break;
-			 } else {			  
-				detail = new_list(4);
-				detail.v.list[1].type = TYPE_STR;
-				detail.v.list[1].v.str = str_dup(dirlist[i]->d_name);
-				detail.v.list[2].type = TYPE_STR;
-				detail.v.list[2].v.str = str_dup(file_type_string(buf.st_mode));
-				detail.v.list[3].type = TYPE_STR;
-				detail.v.list[3].v.str = str_dup(file_mode_string(buf.st_mode));
-				detail.v.list[4].type = TYPE_INT;
-				detail.v.list[4].v.num = buf.st_size;
-			 }
-		  } else {					  
-			 detail.type = TYPE_STR;
-			 detail.v.str = str_dup(dirlist[i]->d_name);			 
-		  }
-		  rv.v.list[i+1] = detail;
+	else {
+		rv = new_list(0);
+		while ( (curfile = readdir(curdir)) != 0 ) {
+		    if (strncmp(curfile->d_name, ".", 2) != 0 && strncmp(curfile->d_name, "..", 3) != 0) {
+			if (detailed) {
+				stream_add_string(s, real_pathname);
+				stream_add_char(s, '/');
+				stream_add_string(s, curfile->d_name);
+				if (stat(reset_stream(s), &buf) != 0) {
+					failed = 1;
+					break;
+				} else {
+					detail = new_list(4);
+					detail.v.list[1].type = TYPE_STR;
+					detail.v.list[1].v.str = str_dup(curfile->d_name);
+					detail.v.list[2].type = TYPE_STR;
+					detail.v.list[2].v.str = str_dup(file_type_string(buf.st_mode));
+					detail.v.list[3].type = TYPE_STR;
+					detail.v.list[3].v.str = str_dup(file_mode_string(buf.st_mode));
+					detail.v.list[4].type = TYPE_INT;
+					detail.v.list[4].v.num = buf.st_size;
+				}
+			} else {
+				detail.type = TYPE_STR;
+				detail.v.str = str_dup(curfile->d_name);
+			}
+			rv = listappend(rv, detail);
+		    }
 		}
-		free(dirlist);
 		if(failed) {
-		  free_var(rv);
-		  r = file_raise_errno(pathspec);
+			free_var(rv);
+			r = file_raise_errno(pathspec);
 		} else
-		  r = make_var_pack(rv);
-	 }		
-  }
-  free_stream(s);
-  free_var(arglist);
-  return r;
+			r = make_var_pack(rv);
+		closedir(curdir);
+	}
+  	free_stream(s);
+    }
+    free_var(arglist);
+    return r;
 }
 
 
