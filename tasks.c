@@ -418,7 +418,7 @@ end_programming(tqueue * tq)
 	    s.nerrors = 0;
 	    s.input = stream_contents(tq->program_stream);
 
-	    program = parse_program(current_version, client, &s);
+	    program = parse_program(current_version, client, &s, PMODE_VERB, 0, 0);
 
 	    sprintf(buf, "%d error(s).", s.nerrors);
 	    notify(player, buf);
@@ -1238,6 +1238,7 @@ read_task_queue(void)
 	Var *rt_env, *old_rt_env;
 	const char **old_names;
 	activation a;
+	Names *orig_names;
 
 	if (dbio_scanf("%d %d %d %d%c",
 		       &dummy, &first_lineno, &st, &id, &c) != 5
@@ -1254,12 +1255,12 @@ read_task_queue(void)
 	    errlog("READ_TASK_QUEUE: Bad env, count = %d.\n", count);
 	    return 0;
 	}
-	if (!(program = dbio_read_program(dbio_input_version,
-					  0, (void *) "forked task"))) {
+	if (!(program = dbio_read_forked_program(dbio_input_version,
+					  0, (void *) "forked task", &orig_names))) {
 	    errlog("READ_TASK_QUEUE: Bad program, count = %d.\n", count);
 	    return 0;
 	}
-	rt_env = reorder_rt_env(old_rt_env, old_names, old_size, program);
+	rt_env = reorder_rt_env(old_rt_env, old_names, old_size, orig_names);
 	program->first_lineno = first_lineno;
 
 	enqueue_ft(program, a, rt_env, MAIN_VECTOR, start_time, id);
@@ -2013,6 +2014,9 @@ char rcsid_tasks[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.9.6.1  2002/09/12 05:57:40  xplat
+ * Changes for inline PC saving and patch tags in the on-disk DB.
+ *
  * Revision 1.9  2001/07/31 06:33:22  bjj
  * Fixed some bugs in the reporting of forked task sizes.
  *

@@ -307,7 +307,30 @@ dbio_read_program(DB_Version version, const char *(*fmtr) (void *), void *data)
     s.prev_char = '\n';
     s.fmtr = fmtr;
     s.data = data;
-    return parse_program(version, parser_client, &s);
+    return parse_program(version, parser_client, &s, PMODE_VERB, 0, 0);
+}
+
+Program *
+dbio_read_active_program(DB_Version version, const char *(*fmtr) (void *),
+                         void *data, Names **orig_names, int *pc)
+{
+    struct state s;
+
+    s.prev_char = '\n';
+    s.fmtr = fmtr;
+    s.data = data;
+    return parse_program(version, parser_client, &s, PMODE_COMPAT, orig_names, pc);
+}
+
+Program *
+dbio_read_forked_program(DB_Version version, const char *(*fmtr) (void *), void *data, Names **orig_names)
+{
+    struct state s;
+
+    s.prev_char = '\n';
+    s.fmtr = fmtr;
+    s.data = data;
+    return parse_program(version, parser_client, &s, PMODE_FORK, orig_names, 0);
 }
 
 
@@ -410,6 +433,13 @@ dbio_write_program(Program * program)
 }
 
 void
+dbio_write_active_program(Program * program, int error_pc, int pc)
+{
+    unparse_program2(program, receiver, 0, 1, 0, MAIN_VECTOR, error_pc);
+    dbio_printf(".\n");
+}
+
+void
 dbio_write_forked_program(Program * program, int f_index)
 {
     unparse_program(program, receiver, 0, 1, 0, f_index);
@@ -420,6 +450,9 @@ char rcsid_db_io[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.1  2002/09/12 05:57:40  xplat
+ * Changes for inline PC saving and patch tags in the on-disk DB.
+ *
  * Revision 1.5  1998/12/14 13:17:34  nop
  * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
  *
