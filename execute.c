@@ -2891,7 +2891,7 @@ write_activ(activation a)
         errlog("WRITE_ACTIV: Verb wasn't upgraded\n");
         dbio_printf("%u %u %u\n", a.pc, a.bi_func_pc, a.error_pc);
     } else {
-        dbio_printf("%u", a.bi_func_pc);
+        dbio_printf("%u\n", a.bi_func_pc);
     }
     if (a.bi_func_pc != 0) {
 	dbio_write_string(name_func_by_num(a.bi_func_id));
@@ -3099,6 +3099,9 @@ char rcsid_execute[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.13.6.3  2002/09/15 06:28:32  xplat
+ * Fixed bugs revealed by smoke test.
+ *
  * Revision 1.13.6.2  2002/09/12 16:08:07  xplat
  * Ben-derived bugfixes.
  *

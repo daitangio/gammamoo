@@ -441,8 +441,8 @@ expr:
 		    } else {
 			if (e->kind == EXPR_RANGE)
 			    e = e->e.range.base;
-			while (e->kind == EXPR_INDEX)
-			    e = e->e.bin.lhs;
+			while ((e->kind == EXPR_INDEX) || (e->kind == EXPR_HOT))
+			    e = e->kind == EXPR_INDEX ? e->e.bin.lhs : e->e.hot.expr;
 			if (e->kind != EXPR_ID  &&  e->kind != EXPR_PROP)
 			    yyerror("Illegal expression on left side of"
 				    " assignment.");
@@ -1299,6 +1299,9 @@ char rcsid_parser[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.2.6.2  2002/09/15 06:28:32  xplat
+ * Fixed bugs revealed by smoke test.
+ *
  * Revision 1.2.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *

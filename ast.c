@@ -325,6 +325,10 @@ free_expr(Expr * expr)
 	free_scatter(expr->e.scatter);
 	break;
 
+    case EXPR_HOT:
+        free_expr(expr->e.hot.expr);
+        break;
+
     default:
 	errlog("FREE_EXPR: Unknown Expr_Kind: %d\n", expr->kind);
 	break;
@@ -415,6 +419,9 @@ char rcsid_ast[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.3.6.1  2002/09/15 06:28:32  xplat
+ * Fixed bugs revealed by smoke test.
+ *
  * Revision 1.3  1998/12/14 13:17:26  nop
  * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
  *
