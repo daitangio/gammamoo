@@ -1039,7 +1039,7 @@ bf_file_tell(Var arglist, Byte next, void *vdata, Objid progr)
 
   if(!file_verify_caller(progr)) {
 	 r = file_raise_notokcall("file_tell", progr);
-  } else if ((f = file_handle_file_safe(fhandle))) {
+  } else if ((f = file_handle_file_safe(fhandle)) == NULL) {
 	 r = make_raise_pack(E_INVARG, "Invalid FHANDLE", var_ref(fhandle));
   } else {
 	 rv.type = TYPE_INT;
@@ -1066,7 +1066,7 @@ bf_file_eof(Var arglist, Byte next, void *vdata, Objid progr)
 
   if(!file_verify_caller(progr)) {
 	 r = file_raise_notokcall("file_eof", progr);
-  } else if ((f = file_handle_file_safe(fhandle))) {
+  } else if ((f = file_handle_file_safe(fhandle)) == NULL) {
 	 r = make_raise_pack(E_INVARG, "Invalid FHANDLE", var_ref(fhandle));
   } else {
 	 rv.type = TYPE_INT;
