@@ -129,14 +129,17 @@ int read_rt_env(const char ***old_names, Var ** rt_env,
 		int *old_size);
 Var *reorder_rt_env(Var * old_rt_env, const char **old_names,
 		    int old_size, Names * new_names);
-extern void write_activ(activation a);
-extern int read_activ(activation * a, int which_vector);
+extern void write_activ(activation a, int which_vector);
+extern int read_activ(activation * a, int *which_vector, int is_root);
 
 #endif
 
 /* 
  * $Log: execute.h,v $
- * Revision 1.6.6.2  2002-09-17 15:04:02  xplat
+ * Revision 1.6.6.3  2002-10-27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
+ * Revision 1.6.6.2  2002/09/17 15:04:02  xplat
  * Updated to INLINEPC_updater_1 in trunk.
  *
  * Revision 1.6.6.1  2002/09/12 05:57:40  xplat

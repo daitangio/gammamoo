@@ -36,14 +36,17 @@ typedef enum {
 } Parser_Mode;
 
 extern Program *parse_program(DB_Version, Parser_Client, void *,
-			      Parser_Mode, Names **, int *);
+			      Parser_Mode, Names **, int *, int *);
 extern Program *parse_list_as_program(Var code, Var * errors);
 
 #endif
 
 /* 
  * $Log: parser.h,v $
- * Revision 1.3.6.1  2002-09-12 05:57:40  xplat
+ * Revision 1.3.6.2  2002-10-27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
+ * Revision 1.3.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
  * Revision 1.3  1998/12/14 13:18:44  nop

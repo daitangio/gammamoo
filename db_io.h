@@ -66,6 +66,7 @@ extern Program *dbio_read_active_program(DB_Version version,
 					 const char *(*fmtr) (void *),
 					 void *data,
 					 Names ** original_names,
+					 int *pc_vector,
 					 int *pc);
 extern Program *dbio_read_forked_program(DB_Version version,
 					 const char *(*fmtr) (void *),
@@ -104,12 +105,15 @@ extern void dbio_write_string(const char *);
 extern void dbio_write_var(Var);
 
 extern void dbio_write_program(Program *);
-extern void dbio_write_active_program(Program * prog, int error_pc, int pc);
+extern void dbio_write_active_program(Program * prog, int pc_vector, int error_pc, int pc);
 extern void dbio_write_forked_program(Program * prog, int f_index);
 
 /* 
  * $Log: db_io.h,v $
- * Revision 1.4.6.2  2002-09-17 15:35:04  xplat
+ * Revision 1.4.6.3  2002-10-27 22:48:12  xplat
+ * Changes to support PCs located in vectors other than MAIN_VECTOR.
+ *
+ * Revision 1.4.6.2  2002/09/17 15:35:04  xplat
  * GNU indent normalization.
  *
  * Revision 1.4.6.1  2002/09/12 05:57:40  xplat
