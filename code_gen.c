@@ -35,7 +35,6 @@
 
 enum fixup_kind {
     FIXUP_LITERAL, FIXUP_FORK, FIXUP_LABEL, FIXUP_VAR_REF, FIXUP_STACK, FIXUP_PC,
-    /* note--kinds after FIXUP_PC, inclusive, have no placeholder bytes */
 };
 
 struct fixup {
@@ -220,7 +219,7 @@ add_known_fixup(Fixup f, State * state)
     f.pc = state->num_bytes;
     state->fixups[i = state->num_fixups++] = f;
 
-    if (f.kind < FIXUP_PC)
+    if (f.kind != FIXUP_PC)
     	emit_byte(0, state);	/* a placeholder for the eventual value */
 
     return i;
@@ -1396,6 +1395,9 @@ char rcsid_code_gen[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.10.4.2  2002/09/12 07:20:50  xplat
+ * Early comments from Ben.
+ *
  * Revision 1.10.4.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *

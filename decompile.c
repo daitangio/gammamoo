@@ -544,9 +544,9 @@ decompile(Bytecodes bc, Byte * start, Byte * end, Stmt ** stmt_sink,
 	        if (ptr == hot_byte) {
 	            *next_base = hot_assign(*next_base);
 	            hot_node = expr_stack[top_expr_stack];
-	            ptr++;
 	        }
-	        next_base = 0;
+		ptr++;
+		next_base = 0;
 	    }
 	    while (*ptr != OP_PUSH_TEMP) {
 		if (ptr == hot_byte)	/* it's our assignment expression */
@@ -1090,6 +1090,9 @@ char rcsid_decompile[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.6.2  2002/09/12 07:20:50  xplat
+ * Early comments from Ben.
+ *
  * Revision 1.5.6.1  2002/09/12 05:57:40  xplat
  * Changes for inline PC saving and patch tags in the on-disk DB.
  *
