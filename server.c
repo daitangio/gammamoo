@@ -957,7 +957,7 @@ server_new_connection(server_listener sl, network_handle nh, int outbound)
     h->print_messages = (!outbound && l->print_messages);
 
     if (!outbound)
-	new_input_task(h->tasks, "");
+	new_input_task(h->tasks, "", 0);
 
     oklog("%s: #%d on %s\n",
 	  outbound ? "CONNECT" : "ACCEPT",
@@ -988,7 +988,7 @@ server_receive_line(server_handle sh, const char *line)
     shandle *h = (shandle *) sh.ptr;
 
     h->last_activity_time = time(0);
-    new_input_task(h->tasks, line);
+    new_input_task(h->tasks, line, h->binary);
 }
 
 void
@@ -1731,6 +1731,9 @@ char rcsid_server[] = "$Id$";
 
 /* 
  * $Log$
+ * Revision 1.5.10.2  2003/06/11 10:40:16  wrog
+ * added binary argument to new_input_task()
+ *
  * Revision 1.5.10.1  2003/06/07 12:59:04  wrog
  * introduced connection_option macros
  *
