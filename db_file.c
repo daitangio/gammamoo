@@ -719,11 +719,11 @@ db_shutdown()
     dump_database(DUMP_SHUTDOWN);
 }
 
-char rcsid_db_file[] = "$Id: db_file.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_db_file[] = "$Id: db_file.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: db_file.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/04/08  01:07:21  pavel
  * Changed a boot-time error message to go directly to stderr, instead of

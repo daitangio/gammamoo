@@ -31,8 +31,8 @@ typedef const struct keyword Keyword;
 extern Keyword *find_keyword(const char *);
 
 /* $Log: keywords.h,v $
-/* Revision 1.1  1997-03-03 03:45:03  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:03  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/02/08  06:24:47  pavel
  * Fixed type of version number.  Updated copyright notice for 1996.

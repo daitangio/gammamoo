@@ -78,8 +78,8 @@ extern Var	zero;		/* useful constant */
 #endif /* !Structures_h */
 
 /* $Log: structures.h,v $
-/* Revision 1.1  1997-03-03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:12:21  pavel
  * Added E_FLOAT, TYPE_FLOAT, and TYPE_NUMERIC.  Renamed TYPE_NUM to TYPE_INT.

@@ -621,11 +621,11 @@ register_objects(void)
 				      TYPE_OBJ, TYPE_OBJ);
 }
 
-char rcsid_objects[] = "$Id: objects.c,v 1.1 1997-03-03 03:45:01 nop Exp $";
+char rcsid_objects[] = "$Id: objects.c,v 1.1.1.1 1997-03-03 03:45:01 nop Exp $";
 
 /* $Log: objects.c,v $
-/* Revision 1.1  1997-03-03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/04/19  01:17:48  pavel
  * Rationalized the errors that can be raised from chparent().

@@ -383,11 +383,11 @@ lookup_addr_from_name(const char *name, unsigned timeout)
     
 #endif /* NETWORK_PROTOCOL == NP_TCP */
 
-char rcsid_name_lookup[] = "$Id: name_lookup.c,v 1.1 1997-03-03 03:45:00 nop Exp $";
+char rcsid_name_lookup[] = "$Id: name_lookup.c,v 1.1.1.1 1997-03-03 03:45:00 nop Exp $";
 
 /* $Log: name_lookup.c,v $
-/* Revision 1.1  1997-03-03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/02/08  06:59:04  pavel
  * Renamed err/logf() to errlog/oklog().  Updated copyright notice for 1996.

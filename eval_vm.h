@@ -30,8 +30,8 @@ extern Objid 		progr_of_cur_verb(vm);
 extern unsigned		suspended_lineno_of_vm(vm);
 
 /* $Log: eval_vm.h,v $
-/* Revision 1.1  1997-03-03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:26:06  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

@@ -52,8 +52,8 @@ extern char    *tzname;
 #endif /* !My_Time_H */
 
 /* $Log: my-time.h,v $
-/* Revision 1.1  1997-03-03 03:45:05  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:05  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:00:41  pavel
  * *** empty log message ***

@@ -48,8 +48,8 @@ extern void	       *mymalloc(unsigned size, Memory_Type type);
 #endif /* Storage_h */
 
 /* $Log: storage.h,v $
-/* Revision 1.1  1997-03-03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:13:09  pavel
  * Added M_FLOAT, removed unused M_PI.  Updated copyright notice for 1996.

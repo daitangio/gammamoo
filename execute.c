@@ -2676,11 +2676,11 @@ read_activ(activation *a, int which_vector)
 }
 
 
-char rcsid_execute[] = "$Id: execute.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_execute[] = "$Id: execute.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: execute.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.10  1996/04/19  01:24:40  pavel
  * Added support for built-in functions making tail calls to MOO verbs and

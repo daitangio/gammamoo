@@ -122,11 +122,11 @@ read_vm(int task_id)
     return the_vm;
 }
 
-char rcsid_eval_vm[] = "$Id: eval_vm.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_eval_vm[] = "$Id: eval_vm.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: eval_vm.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/02/08  07:12:16  pavel
  * Renamed err/logf() to errlog/oklog().  Updated copyright notice for 1996.

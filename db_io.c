@@ -401,11 +401,11 @@ dbio_write_forked_program(Program *program, int f_index)
     dbio_printf(".\n");
 }
 
-char rcsid_db_io[] = "$Id: db_io.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_db_io[] = "$Id: db_io.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: db_io.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/19  07:16:12  pavel
  * Increased precision of floating-point numbers printed in the DB file.

@@ -401,11 +401,11 @@ free_stmt(Stmt *stmt)
     }
 }
 
-char rcsid_ast[] = "$Id: ast.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_ast[] = "$Id: ast.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: ast.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.4  1996/02/08  07:11:54  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1 (again).

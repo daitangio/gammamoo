@@ -48,8 +48,8 @@ extern int	sigrelse(int);
 #endif
 
 /* $Log: my-signal.h,v $
-/* Revision 1.1  1997-03-03 03:45:05  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:05  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:03:00  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

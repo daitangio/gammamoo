@@ -975,11 +975,11 @@ find_line_number(Program *prog, int vector, int pc)
     return lineno;
 }
 
-char rcsid_decompile[] = "$Id: decompile.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_decompile[] = "$Id: decompile.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: decompile.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.6  1996/03/10  01:17:48  pavel
  * Removed a automatic structure initialization.  Release 1.8.0.

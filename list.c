@@ -1114,11 +1114,11 @@ register_list(void)
 }
 
 
-char rcsid_list[] = "$Id: list.c,v 1.1 1997-03-03 03:45:00 nop Exp $";
+char rcsid_list[] = "$Id: list.c,v 1.1.1.1 1997-03-03 03:45:00 nop Exp $";
 
 /* $Log: list.c,v $
-/* Revision 1.1  1997-03-03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.7  1996/03/11  23:35:17  pavel
  * Fixed bad use of possibly-signed characters in decode_binary().

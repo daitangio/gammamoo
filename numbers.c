@@ -720,11 +720,11 @@ register_numbers(void)
     register_function("trunc", 1, 1, bf_trunc, TYPE_FLOAT);
 }
 
-char rcsid_numbers[] = "$Id: numbers.c,v 1.1 1997-03-03 03:45:00 nop Exp $";
+char rcsid_numbers[] = "$Id: numbers.c,v 1.1.1.1 1997-03-03 03:45:00 nop Exp $";
 
 /* $Log: numbers.c,v $
-/* Revision 1.1  1997-03-03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.5  1996/03/19  07:15:27  pavel
  * Fixed floatstr() to allow DBL_DIG + 4 digits.  Release 1.8.0p2.

@@ -897,11 +897,11 @@ sys_sbrk (incr)
 }
 #endif /* VMS */
 
-char rcsid_gnu_malloc[] = "$Id: gnu-malloc.c,v 1.1 1997-03-03 03:45:02 nop Exp $";
+char rcsid_gnu_malloc[] = "$Id: gnu-malloc.c,v 1.1.1.1 1997-03-03 03:45:02 nop Exp $";
 
 /* $Log: gnu-malloc.c,v $
-/* Revision 1.1  1997-03-03 03:45:02  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:02  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:38:46  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

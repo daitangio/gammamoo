@@ -320,11 +320,11 @@ register_property(void)
 			     TYPE_OBJ, TYPE_STR);
 }
 
-char rcsid_property[] = "$Id: property.c,v 1.1 1997-03-03 03:45:01 nop Exp $";
+char rcsid_property[] = "$Id: property.c,v 1.1.1.1 1997-03-03 03:45:01 nop Exp $";
 
 /* $Log: property.c,v $
-/* Revision 1.1  1997-03-03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/02/11  00:44:45  pavel
  * Fixed potential panic in clear_property() when called on the definer of the

@@ -45,8 +45,8 @@ extern void		free_parsed_command(Parsed_Command *);
 #endif /* !Parse_Cmd_H */
 
 /* $Log: parse_cmd.h,v $
-/* Revision 1.1  1997-03-03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.1  1996/02/08  06:15:41  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.

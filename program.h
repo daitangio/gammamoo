@@ -59,8 +59,8 @@ extern void		free_program(Program *);
 #endif /* !Program_H */
 
 /* $Log: program.h,v $
-/* Revision 1.1  1997-03-03 03:45:04  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:04  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/02/08  06:14:19  pavel
  * Added version number on programs.  Updated copyright notice for 1996.

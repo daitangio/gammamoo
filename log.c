@@ -149,11 +149,11 @@ register_log(void)
     register_function("server_log", 1, 2, bf_server_log, TYPE_STR, TYPE_ANY);
 }
 
-char rcsid_log[] = "$Id: log.c,v 1.1 1997-03-03 03:45:00 nop Exp $";
+char rcsid_log[] = "$Id: log.c,v 1.1.1.1 1997-03-03 03:45:00 nop Exp $";
 
 /* $Log: log.c,v $
-/* Revision 1.1  1997-03-03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/04/08  01:06:25  pavel
  * Added `set_log_file()' entry point.  Made logging print undated messages to

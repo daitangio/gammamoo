@@ -439,11 +439,11 @@ binary_to_raw_bytes(const char *binary, int *buflen)
     return reset_stream(s);
 }
 
-char rcsid_utils[] = "$Id: utils.c,v 1.1 1997-03-03 03:45:01 nop Exp $";
+char rcsid_utils[] = "$Id: utils.c,v 1.1.1.1 1997-03-03 03:45:01 nop Exp $";
 
 /* $Log: utils.c,v $
-/* Revision 1.1  1997-03-03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.8  1996/04/08  00:43:09  pavel
  * Changed definition of `value_bytes()' to add in `sizeof(Var)'.

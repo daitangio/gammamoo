@@ -661,11 +661,11 @@ dbpriv_fix_properties_after_chparent(Objid oid, Objid old_parent)
     fix_props(oid, 0, old_props, new_props, common_props);
 }
 
-char rcsid_db_properties[] = "$Id: db_properties.c,v 1.1 1997-03-03 03:44:59 nop Exp $";
+char rcsid_db_properties[] = "$Id: db_properties.c,v 1.1.1.1 1997-03-03 03:44:59 nop Exp $";
 
 /* $Log: db_properties.c,v $
-/* Revision 1.1  1997-03-03 03:44:59  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:44:59  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.6  1996/04/08  01:08:32  pavel
  * Fixed `db_rename_propdef()' to allow case-only changes.  Release 1.8.0p3.

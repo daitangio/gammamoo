@@ -573,11 +573,11 @@ register_verbs(void)
     register_function("eval", 1, 1, bf_eval, TYPE_STR);
 }
 
-char rcsid_verbs[] = "$Id: verbs.c,v 1.1 1997-03-03 03:45:01 nop Exp $";
+char rcsid_verbs[] = "$Id: verbs.c,v 1.1.1.1 1997-03-03 03:45:01 nop Exp $";
 
 /* $Log: verbs.c,v $
-/* Revision 1.1  1997-03-03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.8  1996/05/12  21:29:46  pavel
  * Fixed memory leak for verb names string in bf_add_verb.  Release 1.8.0p5.

@@ -168,11 +168,11 @@ find_keyword(const char *word)
     return in_word_set(word, strlen(word));
 }
 
-char rcsid_keywords[] = "$Id: keywords.c,v 1.1 1997-03-03 03:45:00 nop Exp $";
+char rcsid_keywords[] = "$Id: keywords.c,v 1.1.1.1 1997-03-03 03:45:00 nop Exp $";
 
 /* $Log: keywords.c,v $
-/* Revision 1.1  1997-03-03 03:45:00  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:00  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.2  1996/02/08  06:33:21  pavel
  * Added `break', `continue', and E_FLOAT.  Updated copyright notice for 1996.

@@ -111,11 +111,11 @@ free_program(Program *p)
     }
 }
 
-char rcsid_program[] = "$Id: program.c,v 1.1 1997-03-03 03:45:01 nop Exp $";
+char rcsid_program[] = "$Id: program.c,v 1.1.1.1 1997-03-03 03:45:01 nop Exp $";
 
 /* $Log: program.c,v $
-/* Revision 1.1  1997-03-03 03:45:01  nop
-/* Initial revision
+/* Revision 1.1.1.1  1997-03-03 03:45:01  nop
+/* LambdaMOO 1.8.0p5
 /*
  * Revision 2.3  1996/04/08  00:41:16  pavel
  * Corrected an error in the computation of `program_bytes()'.
