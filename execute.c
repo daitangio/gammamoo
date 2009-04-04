@@ -138,6 +138,21 @@ error_backtrace_list(const char *msg)
     return backtrace_list;
 }
 
+static Var
+activ_command_str(activation *activ)
+{
+    Stream *s = new_stream(0x10);
+    Var value;
+
+    stream_add_string(s, activ[0].verb);
+    stream_add_char(s, ' ');
+    stream_add_string(s, activ[0].rt_env[SLOT_ARGSTR].v.str);
+    value.type = TYPE_STR;
+    value.v.str = str_dup(stream_contents(s));
+    free_stream(s);
+    return value;
+}
+
 static enum error
 suspend_task(package p)
 {
@@ -423,8 +438,9 @@ raise_error(package p, enum outcome *outcome)
 	value = new_list(4);
     } else {			/* uncaught exception */
 	why = FIN_UNCAUGHT;
-	value = new_list(5);
+	value = new_list(6);
 	value.v.list[5] = error_backtrace_list(p.u.raise.msg);
+	value.v.list[6] = activ_command_str(activ_stack);
 	handler_activ = 0;	/* get entire stack in list */
     }
     value.v.list[1] = p.u.raise.code;
@@ -449,12 +465,14 @@ abort_task(int is_ticks)
     const char *msg = (is_ticks ? "Task ran out of ticks"
 		       : "Task ran out of seconds");
 
-    value = new_list(3);
+    value = new_list(4);
     value.v.list[1].type = TYPE_STR;
     value.v.list[1].v.str = str_dup(is_ticks ? "ticks" : "seconds");
     value.v.list[2] = make_stack_list(activ_stack, 0, top_activ_stack, 1,
 				      root_activ_vector, 1);
     value.v.list[3] = error_backtrace_list(msg);
+    value.v.list[4] = activ_command_str(activ_stack);
+
     save_handler_info("handle_task_timeout", value);
     unwind_stack(FIN_ABORT, zero, 0);
 }
@@ -1935,7 +1953,8 @@ run_interpreter(enum error e, Var * result, int is_fg, int do_db_tracebacks)
 	    }
 	}
 	i = args.v.list[0].v.num;
-	traceback = args.v.list[i];	/* traceback is always the last argument */
+	traceback = args.v.list[i - 1];	/* traceback is always the
+	                                   second-to-last argument */
 	for (i = 1; i <= traceback.v.list[0].v.num; i++)
 	    notify(activ_stack[0].player, traceback.v.list[i].v.str);
 	free_var(args);

@@ -2295,3 +2295,13 @@ Version 1.8.0p5, 12 May 1996
 	36789.foo
    (an understandable typo for #6789.foo) stopped compiling when found in a
    database made by a pre-1.8.0 server.
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- $handle_uncaught_error() and $handle_task_timeout() are now called with an
+   additional argument, containing the full command entered that triggered the
+   exception.
+   ********** Before upgrading an existing LambdaCore-based MOO to use this
+   ** NOTE ** version of the server, you might need to edit your core verbs
+   ********** to at least ignore the new argument. Scattered assignments
+   without a dummy "extra arguments" catchall at the end will throw E_ARGS!
