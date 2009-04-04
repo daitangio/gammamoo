@@ -474,8 +474,17 @@ do_command_task(tqueue *tq, char *command)
     } else {
 	Parsed_Command *pc = parse_command(command, tq->player);
 
-	if (!pc)
-	    return 0;
+	if (!pc) {
+	    Var result;
+	    char did_one;
+
+	    run_server_task_setting_id(tq->player, tq->handler,
+	                               "do_null_command", new_list(0), command,
+	                               &result, &(tq->last_input_task_id));
+	    did_one = is_true(result);
+	    free_var(result);
+	    return did_one;
+	}
 
 	if (is_programmer(tq->player) && verbcasecmp(".pr*ogram", pc->verb)) {
 	    if (pc->args.v.list[0].v.num != 1)
