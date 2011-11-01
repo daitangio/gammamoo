@@ -2295,3 +2295,12 @@ Version 1.8.0p5, 12 May 1996
 	36789.foo
    (an understandable typo for #6789.foo) stopped compiling when found in a
    database made by a pre-1.8.0 server.
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- $match_object() is called to lookup dobj and iobj (one at a time). If it
+   returns an OBJ type, the return value is used. Otherwise, the old internal
+   matching is used.
+   ********** Before upgrading an existing LambdaCore-based MOO to use this
+   ** NOTE ** version of the server, you should probably add at least a dummy
+   ********** $match_object verb (no code needed to get the old behaviour).
