@@ -313,6 +313,7 @@ AC_TIMEZONE
 MOO_HAVE_FUNC_LIBS(sqrt, -lm /lib/libm.a "-static -lm")
 MOO_HAVE_FUNC_LIBS(mkfifo waitpid sigemptyset, -lposix /lib/libposix.a)
 MOO_HAVE_FUNC_LIBS(accept, "-lsocket -lnsl" -lsocket -linet)
+MOO_HAVE_FUNC_LIBS(socketpair, "-lsocket -lnsl" -lsocket -linet)
 MOO_HAVE_FUNC_LIBS(t_open, -lnsl -lnsl_s)
 MOO_HAVE_FUNC_LIBS(crypt, -lcrypt -lcrypt_d)
 AC_HAVE_HEADERS(unistd.h sys/cdefs.h stdlib.h tiuser.h machine/endian.h)

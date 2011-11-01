@@ -1396,6 +1396,79 @@ bf_open_network_connection(Var arglist, Byte next, void *vdata, Objid progr)
 }
 
 static package
+create_connection_internal(int fromoid, int tooid, Var options, Objid progr)
+{
+    Var r, optval;
+    enum error e;
+    slistener lfrom, lto;
+    server_listener slfrom, slto;
+
+    if (!is_wizard(progr))
+	return make_error_pack(E_PERM);
+
+    lto.print_messages = is_true(options);
+    lto.name = "create_connection (inbound)";
+    lto.desc = zero;
+    lto.oid = tooid;
+    slto.ptr = &lto;
+
+    if (fromoid != NOTHING) {
+	lfrom.print_messages = 0;
+	lfrom.name = "create_connection (outbound)";
+	lfrom.desc = zero;
+	lfrom.oid = fromoid;
+	slfrom.ptr = &lfrom;
+    } else {
+	slfrom.ptr = NULL;
+    }
+
+    if ((e = network_create_connection(slfrom, fromoid, slto, tooid)) != E_NONE)
+	return make_error_pack(e);
+
+    r.type = TYPE_OBJ;
+    r.v.obj = next_unconnected_player + 1;
+
+    return make_var_pack(r);
+}
+
+static package
+bf_create_connection(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    int tooid = arglist.v.list[1].v.obj;
+    Var options;
+    package r;
+
+    if (arglist.v.list[0].v.num > 1)
+	options = var_ref(arglist.v.list[2]);
+    else
+	options = zero;
+
+    r = create_connection_internal(-1, tooid, options, progr);
+    free_var(arglist);
+    free_var(options);
+    return r;
+}
+
+static package
+bf_create_connection_from(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    int fromoid = arglist.v.list[1].v.obj;
+    int tooid = arglist.v.list[2].v.obj;
+    Var options;
+    package r;
+
+    if (arglist.v.list[0].v.num > 2)
+	options = var_ref(arglist.v.list[3]);
+    else
+	options = zero;
+
+    r = create_connection_internal(fromoid, tooid, options, progr);
+    free_var(arglist);
+    free_var(options);
+    return r;
+}
+
+static package
 bf_connected_players(Var arglist, Byte next, void *vdata, Objid progr)
 {
     shandle *h;
@@ -1710,6 +1783,10 @@ register_server(void)
     register_function("db_disk_size", 0, 0, bf_db_disk_size);
     register_function("open_network_connection", 0, -1,
 		      bf_open_network_connection);
+    register_function("create_connection", 1, 2, bf_create_connection,
+		      TYPE_OBJ, TYPE_ANY);
+    register_function("create_connection_from", 2, 3, bf_create_connection_from,
+		      TYPE_OBJ, TYPE_OBJ, TYPE_ANY);
     register_function("connected_players", 0, 1, bf_connected_players,
 		      TYPE_ANY);
     register_function("connected_seconds", 1, 1, bf_connected_seconds,

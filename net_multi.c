@@ -20,6 +20,7 @@
 #include "my-fcntl.h"
 #include "my-ioctl.h"
 #include "my-signal.h"
+#include "my-socket.h"
 #include "my-stdio.h"
 #include "my-stdlib.h"
 #include "my-string.h"
@@ -700,6 +701,43 @@ network_open_connection(Var arglist)
     return e;
 }
 #endif
+
+enum error
+network_create_connection(server_listener from, Objid fromoid, server_listener to, Objid tooid)
+{
+#ifdef HAVE_SOCKETPAIR
+    int fd[2];
+    const char *from_name, *to_name;
+    Var tmpvar;
+    nhandle *h;
+    network_handle nh;
+    Stream *s = new_stream(8);
+
+    if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fd))
+	return E_QUOTA;
+
+    tmpvar.type = TYPE_OBJ;
+    tmpvar.v.obj = fromoid;
+    unparse_value(s, tmpvar);
+    from_name = str_dup(reset_stream(s));
+    tmpvar.v.obj = tooid;
+    unparse_value(s, tmpvar);
+    to_name = str_dup(stream_contents(s));
+    free_stream(s);
+
+    nh.ptr = h = new_nhandle(fd[0], fd[0], to_name, from_name, 0);
+    h->shandle = server_new_connection(to, nh, 0);
+    nh.ptr = h = new_nhandle(fd[1], fd[1], from_name, to_name, 1);
+    h->shandle = server_new_connection(from, nh, 1);
+
+    free_str(from_name);
+    free_str(to_name);
+
+    return E_NONE;
+#else
+    return E_VERBNF;
+#endif
+}
 
 void
 network_close(network_handle h)
