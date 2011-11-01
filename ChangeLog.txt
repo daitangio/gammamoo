@@ -2495,3 +2495,13 @@ Version 1.8.4, in progress
 -- server_flag_option() now takes an explicit default argument
 -- rename load_server_protect_flags() to
    load_server_protect_function_flags()
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- $handle_uncaught_error() and $handle_task_timeout() are now called with an
+   additional argument, containing the full command entered that triggered the
+   exception.
+   ********** Before upgrading an existing LambdaCore-based MOO to use this
+   ** NOTE ** version of the server, you might need to edit your core verbs
+   ********** to at least ignore the new argument. Scattered assignments
+   without a dummy "extra arguments" catchall at the end will throw E_ARGS!
