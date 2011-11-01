@@ -2522,3 +2522,5 @@ Version X, in progress
    possible literal values. Formerly, FLOAT literals were not properly
    disassembled.
 -- Trapped various error conditions formerly ignored.
+-- Fixed null pointer dereference when trying to dump an uninitialized command
+   history.
