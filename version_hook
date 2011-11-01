@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my $outfile = 'version_src.h';
+
+if (-s $outfile) {
+	open my $f, '<', $outfile;
+	my $fl = <$f>;
+	close $f;
+	no warnings 'uninitialized';
+	exit unless $fl =~ /THIS FILE WILL BE AUTOMATICALLY REGENERATED UNLESS YOU DELETE THIS LINE/;
+}
+
+my %source;
+
+if (-e '.git') {
+	$source{'vcs'} = 'git';
+	my $dirty = system 'git', '-c', 'diff.autorefreshindex=true', 'diff', '--quiet';
+	$dirty = $dirty ? '+dirty' : '';
+	my ($dummy, $commit, $tree, $refs) = `git log -1 --format='format:%n%H%n%T%n%d'`;
+	chomp for $commit, $tree, $refs;
+	$source{'commit'} = "$commit$dirty";
+	$source{'tree'} = "$tree$dirty";
+	my @refs = $refs =~ m/([\w\/-]+)/g;
+	$source{'refs'} = "@refs";
+	my %remote;
+	for my $ref (@refs) {
+		$ref =~ m/^(.*)\// or next;
+		my $remote = $1;
+		my $uri;
+		if (`git remote show -n $remote` =~ /Fetch UR[IL]\:\s*(.*)/) {
+			$uri = $1;
+			if ($uri !~ /^(?:http|git)/ or $uri =~ /\@/) {
+				undef $uri;
+			}
+		}
+		$remote{$remote} = $uri;
+	}
+	my $uri = $remote{'origin'};
+	for my $remote (keys %remote) {
+		next unless defined $remote{$remote};
+		$source{"remote_$remote"} = $remote{$remote};
+		$uri ||= $remote{$remote};
+	}
+	$source{'url'} = $uri if defined $uri;
+}
+
+exit unless %source;
+
+open my $f, '>', $outfile;
+print $f "/* THIS FILE WILL BE AUTOMATICALLY REGENERATED UNLESS YOU DELETE THIS LINE */\n";
+print $f "#define VERSION_SOURCE(DEF) ";
+print $f
+	join ' ',
+	map {
+		my $fv = $source{$_};
+		$fv =~ s/([\\"])/\\$1/g;
+		"DEF($_, \"" . $fv . "\")"
+	} keys %source;
+print $f "\n";
+close $f;
+warn "Regenerated $outfile\n";
