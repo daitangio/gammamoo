@@ -2530,3 +2530,4 @@ Version X, in progress
 
 **** Changes relevant to server hackers:
 -- Makefile now uses gperf (3.0.1+) to generate keywords.c
+-- configure script is now generated with autoconf 2.13 or 2.5x+
