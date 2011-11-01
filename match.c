@@ -127,8 +127,13 @@ match_object(Objid player, const char *name)
 
     run_server_task(player, SYSTEM_OBJECT, "match_object",
                     match_object_args, name, &matched_object);
-    if (matched_object.type == TYPE_OBJ)
-	return matched_object.v.obj;
+    if (matched_object.type == TYPE_OBJ) {
+	Objid o = matched_object.v.obj;
+
+	free_var(matched_object);
+	return o;
+    }
+    free_var(matched_object);
 
     if (name[0] == '\0')
 	return NOTHING;
