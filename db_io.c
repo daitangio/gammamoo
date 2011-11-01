@@ -53,7 +53,8 @@ dbpriv_set_dbio_input(FILE * f)
 void
 dbio_read_line(char *s, int n)
 {
-    fgets(s, n, input);
+    if (!fgets(s, n, input))
+	panic("DBIO_READ_LINE: Read failed");
 }
 
 int
@@ -134,7 +135,7 @@ dbio_read_num(void)
     char *p;
     int i;
 
-    fgets(s, 20, input);
+    dbio_read_line(s, 20);
     i = strtol(s, &p, 10);
     if (isspace(*s) || *p != '\n')
 	errlog("DBIO_READ_NUM: Bad number: \"%s\" at file pos. %ld\n",
@@ -149,7 +150,7 @@ dbio_read_float(void)
     char *p;
     double d;
 
-    fgets(s, 40, input);
+    dbio_read_line(s, 40);
     d = strtod(s, &p);
     if (isspace(*s) || *p != '\n')
 	errlog("DBIO_READ_FLOAT: Bad number: \"%s\" at file pos. %ld\n",
@@ -174,7 +175,7 @@ dbio_read_string(void)
 	str = new_stream(1024);
 
   try_again:
-    fgets(buffer, sizeof(buffer), input);
+    dbio_read_line(buffer, sizeof(buffer));
     len = strlen(buffer);
     if (len == sizeof(buffer) - 1 && buffer[len - 1] != '\n') {
 	stream_add_string(str, buffer);
