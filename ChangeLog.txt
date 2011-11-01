@@ -2527,3 +2527,6 @@ Version X, in progress
 
 **** Changes relevant to programmers / wizards:
 -- Setting binary mode immediately flushes the connection's buffer, if any
+
+**** Changes relevant to server hackers:
+-- Makefile now uses gperf (3.0.1+) to generate keywords.c
