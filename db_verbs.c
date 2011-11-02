@@ -601,6 +601,31 @@ db_find_indexed_verb(Objid oid, unsigned index)
     return vh;
 }
 
+db_verb_handle
+db_dup_verb_handle(db_verb_handle vh)
+{
+    handle *h = (handle *) vh.ptr;
+
+    if (!h)
+	return vh;
+
+    vh.ptr = mymalloc(sizeof(handle), M_VERBHANDLE);
+    memcpy(vh.ptr, h, sizeof(handle));
+
+    return vh;
+}
+
+void
+db_free_verb_handle(db_verb_handle vh)
+{
+    handle *h = (handle *) vh.ptr;
+
+    if (!h)
+	return;
+
+    myfree(h, M_VERBHANDLE);
+}
+
 Objid
 db_verb_definer(db_verb_handle vh)
 {

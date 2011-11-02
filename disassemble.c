@@ -446,12 +446,15 @@ bf_disassemble(Var arglist, Byte next, void *vdata, Objid progr)
 	return make_error_pack(e);
     }
     h = find_described_verb(oid, desc);
+    h = db_dup_verb_handle(h);
     free_var(arglist);
 
     if (!h.ptr)
 	return make_error_pack(E_VERBNF);
-    if (!db_verb_allows(h, progr, VF_READ))
+    if (!db_verb_allows(h, progr, VF_READ)) {
+	db_free_verb_handle(h);
 	return make_error_pack(E_PERM);
+    }
 
     data.lines = 0;
     data.used = data.max = 0;
@@ -463,6 +466,7 @@ bf_disassemble(Var arglist, Byte next, void *vdata, Objid progr)
     }
     if (data.lines)
 	myfree(data.lines, M_DISASSEMBLE);
+    db_free_verb_handle(h);
     return make_var_pack(r);
 }
 

@@ -456,12 +456,15 @@ read_db_file(void)
 	    errlog("READ_DB_FILE: Unknown verb index: #%d:%d.\n", oid, vnum);
 	    return 0;
 	}
+	h = db_dup_verb_handle(h);
 	program = dbio_read_program(dbio_input_version, fmt_verb_name, &h);
 	if (!program) {
 	    errlog("READ_DB_FILE: Unparsable program #%d:%d.\n", oid, vnum);
+	    db_free_verb_handle(h);
 	    return 0;
 	}
 	db_set_verb_program(h, program);
+	db_free_verb_handle(h);
 	if (i == nprogs || log_report_progress())
 	    oklog("LOADING: Done reading %d verb programs...\n", i);
     }
