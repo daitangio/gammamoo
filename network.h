@@ -211,6 +211,10 @@ extern enum error network_open_connection(Var arglist, server_listener sl);
 
 #endif
 
+extern enum error network_create_connection(server_listener from,
+					    Objid fromoid, server_listener to,
+					    Objid tooid);
+
 extern void network_close(network_handle nh);
 				/* The specified connection should be closed
 				 * immediately, after flushing as much pending

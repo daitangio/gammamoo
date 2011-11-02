@@ -2543,6 +2543,9 @@ Version X, in progress
    without a dummy "extra arguments" catchall at the end will throw E_ARGS!
 -- random() now accepts either one or two arguments. If two, the first is
    treated as the minimum random number and the second as the maximum.
+-- Wizards can create "network" connections entirely within the MOO using new
+   builtin functions: create_connection(OBJ destination-object[, INT print-messages]) and
+   create_connection_from(OBJ source-object, OBJ destination-object[, INT print-messages])
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by

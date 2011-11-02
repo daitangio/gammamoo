@@ -112,6 +112,12 @@ network_connection_name(network_handle nh)
     return "standard input";
 }
 
+enum error
+network_create_connection(server_listener from, Objid fromoid, server_listener to, Objid tooid)
+{
+    return E_VERBNF;
+}
+
 void
 network_set_connection_binary(network_handle nh, int do_binary)
 {
