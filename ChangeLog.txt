@@ -2533,6 +2533,7 @@ Version X, in progress
    ********** Before upgrading an existing LambdaCore-based MOO to use this
    ** NOTE ** version of the server, you should probably add at least a dummy
    ********** $match_object verb (no code needed to get the old behaviour).
+-- Call $do_null_command() when there is a null input from a player
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by
