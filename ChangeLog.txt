@@ -2493,3 +2493,15 @@ Version 1.8.4, in progress
 -- some prep work for 64-bit MOO currently isolated in numbers.c
    (will need autoconf update to work properly)
 -- server_flag_option() now takes an explicit default argument
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- Added new support for in-db definitions of "builtin" functions.
+   Unrecognized functions are checked for an implementation as $bf__FUNCNAME
+   They behave the same as C builtins, except:
+	-- there is an additional protect_core_function/bf_core_function
+	   check pair
+	-- it's possible to bypass the usual $bf_FUNCNAME by calling them
+	   directly
+	-- load_server_options() is not required before their protect_FUNCNAME
+	   property takes effect

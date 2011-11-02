@@ -2423,9 +2423,14 @@ bf_call_function(Var arglist, Byte next, void *vdata, Objid progr)
 
 	fnum = number_func_by_name(fname);
 	if (fnum == FUNC_NOT_FOUND) {
+	    if (is_core_function(fname)) {
+		fnum = core_function_num;
+		p = call_bi_func(fnum, arglist, next, progr, vdata);
+	    } else {
 	    p = make_raise_pack(E_INVARG, "Unknown built-in function",
 				var_ref(arglist.v.list[1]));
 	    free_var(arglist);
+	    }
 	} else {
 	    arglist = listdelete(arglist, 1);
 	    p = call_bi_func(fnum, arglist, next, progr, vdata);

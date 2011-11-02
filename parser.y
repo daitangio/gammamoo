@@ -460,15 +460,17 @@ expr:
 		    unsigned f_no;
 
 		    $$ = alloc_expr(EXPR_CALL);
-		    if ((f_no = number_func_by_name($1)) == FUNC_NOT_FOUND) {
-			/* Replace with call_function("$1", @args) */
+		    if ((f_no = number_func_by_name($1)) == FUNC_NOT_FOUND ||
+		        f_no == core_function_num) {
+			/* Replace with core_function("$1", @args) */
 			Expr	       *fname = alloc_var(TYPE_STR);
 			Arg_List       *a = alloc_arg_list(ARG_NORMAL, fname);
 
 			fname->e.var.v.str = $1;
 			a->next = $3;
+			if (!is_core_function($1))
 			warning("Unknown built-in function: ", $1);
-			$$->e.call.func = number_func_by_name("call_function");
+			$$->e.call.func = core_function_num;
 			$$->e.call.args = a;
 		    } else {
 			$$->e.call.func = f_no;
