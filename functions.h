@@ -87,6 +87,9 @@ extern unsigned register_function_with_read_write(const char *, int, int,
 						  bf_type, bf_read_type,
 						  bf_write_type,...);
 
+extern unsigned core_function_num;
+extern char is_core_function(const char *);
+
 extern package call_bi_func(unsigned, Var, Byte, Objid, void *);
 /* will free or use Var arglist */
 

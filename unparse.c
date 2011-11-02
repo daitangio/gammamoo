@@ -611,11 +611,20 @@ unparse_expr(Stream * str, Expr * expr)
 	break;
 
     case EXPR_CALL:
+    {
+	Arg_List *args = expr->e.call.args;
+
+	if (expr->e.call.func == core_function_num) {
+	    stream_add_string(str, args->expr->e.var.v.str);
+	    args = args->next;
+	} else {
 	stream_add_string(str, name_func_by_num(expr->e.call.func));
+	}
 	stream_add_char(str, '(');
-	unparse_arglist(str, expr->e.call.args);
+	unparse_arglist(str, args);
 	stream_add_char(str, ')');
 	break;
+    }
 
     case EXPR_ID:
 	stream_add_string(str, prog->var_names[expr->e.id]);

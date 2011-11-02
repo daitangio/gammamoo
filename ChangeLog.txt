@@ -2549,6 +2549,15 @@ Version X, in progress
 -- Wizards can create "network" connections entirely within the MOO using new
    builtin functions: create_connection(OBJ destination-object[, INT print-messages]) and
    create_connection_from(OBJ source-object, OBJ destination-object[, INT print-messages])
+-- Added new support for in-db definitions of "builtin" functions.
+   Unrecognized functions are checked for an implementation as $bf__FUNCNAME
+   They behave the same as C builtins, except:
+	-- there is an additional protect_core_function/bf_core_function
+	   check pair
+	-- it's possible to bypass the usual $bf_FUNCNAME by calling them
+	   directly
+	-- load_server_options() is not required before their protect_FUNCNAME
+	   property takes effect
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by
