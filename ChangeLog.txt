@@ -2541,6 +2541,8 @@ Version X, in progress
    ** NOTE ** version of the server, you might need to edit your core verbs
    ********** to at least ignore the new argument. Scattered assignments
    without a dummy "extra arguments" catchall at the end will throw E_ARGS!
+-- random() now accepts either one or two arguments. If two, the first is
+   treated as the minimum random number and the second as the maximum.
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by

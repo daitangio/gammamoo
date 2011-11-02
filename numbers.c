@@ -768,7 +768,8 @@ static package
 bf_random(Var arglist, Byte next, void *vdata, Objid progr)
 {
     int nargs = arglist.v.list[0].v.num;
-    int num = (nargs >= 1 ? arglist.v.list[1].v.num : INTNUM_MAX);
+    int num = (nargs >= 1 ? arglist.v.list[nargs].v.num : INTNUM_MAX);
+    int offs = (nargs >= 2 ? (arglist.v.list[1].v.num - 1) : 0);
     Var r;
     int e;
     int rnd;
@@ -776,6 +777,8 @@ bf_random(Var arglist, Byte next, void *vdata, Objid progr)
 	((INTNUM_MAX > RAND_MAX ? RAND_MAX : (RAND_MAX - num)) + 1) % num;
 
     free_var(arglist);
+
+    num -= offs;
 
     if (num <= 0)
 	return make_error_pack(E_INVARG);
@@ -804,6 +807,7 @@ bf_random(Var arglist, Byte next, void *vdata, Objid progr)
 
     if (rnd >= e) {
 	r.v.num = 1 + rnd % num;
+	r.v.num += offs;
 	return make_var_pack(r);
     }
 #endif
@@ -839,6 +843,7 @@ bf_random(Var arglist, Byte next, void *vdata, Objid progr)
 	    break;
 	}
     }
+    r.v.num += offs;
     return make_var_pack(r);
 #undef RANGE
 #undef OR_ZERO
@@ -881,7 +886,7 @@ register_numbers(void)
     register_function("min", 1, -1, bf_min, TYPE_NUMERIC);
     register_function("max", 1, -1, bf_max, TYPE_NUMERIC);
     register_function("abs", 1, 1, bf_abs, TYPE_NUMERIC);
-    register_function("random", 0, 1, bf_random, TYPE_INT);
+    register_function("random", 0, 2, bf_random, TYPE_INT, TYPE_INT);
     register_function("time", 0, 0, bf_time);
     register_function("ctime", 0, 1, bf_ctime, TYPE_INT);
     register_function("floatstr", 2, 3, bf_floatstr,
