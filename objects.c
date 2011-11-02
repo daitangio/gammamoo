@@ -485,6 +485,12 @@ bf_recycle(Var arglist, Byte func_pc, void *vdata, Objid progr)
 	    db_change_parent(c, db_object_parent(oid));
 	db_change_parent(oid, NOTHING);
 
+	/* Traceback the recycle to the log if it's a player */
+	if (is_user(oid)) {
+	    oklog("RECYCLED: #%d by programmer #%d\n", oid, progr);
+	    print_error_backtrace("Player recycled.", output_to_log);
+	}
+
 	/* Finish the demolition. */
 	incr_quota(db_object_owner(oid));
 	db_destroy_object(oid);
@@ -567,6 +573,10 @@ bf_set_player_flag(Var arglist, Byte next, void *vdata, Objid progr)
     if (bool) {
 	db_set_object_flag(obj.v.obj, FLAG_USER);
     } else {
+	if (is_user(obj.v.obj)) {
+	    oklog("TOADED: #%d by programmer #%d\n", obj.v.obj, progr);
+	    print_error_backtrace("Player flag unset.", output_to_log);
+	}
 	boot_player(obj.v.obj);
 	db_clear_object_flag(obj.v.obj, FLAG_USER);
     }
