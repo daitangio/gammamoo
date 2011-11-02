@@ -628,10 +628,13 @@ call_verb2(Objid this, const char *vname, Var args, int do_pass)
     if (!valid(where))
 	return E_INVIND;
     h = db_find_callable_verb(where, vname);
+    h = db_dup_verb_handle(h);
     if (!h.ptr)
 	return E_VERBNF;
-    else if (!push_activation())
+    else if (!push_activation()) {
+	db_free_verb_handle(h);
 	return E_MAXREC;
+    }
 
     program = db_verb_program(h);
     RUN_ACTIV.prog = program_ref(program);
@@ -641,6 +644,8 @@ call_verb2(Objid this, const char *vname, Var args, int do_pass)
     RUN_ACTIV.verb = str_ref(vname);
     RUN_ACTIV.verbname = str_ref(db_verb_names(h));
     RUN_ACTIV.debug = (db_verb_flags(h) & VF_DEBUG);
+
+    db_free_verb_handle(h);
 
     alloc_rt_stack(&RUN_ACTIV, program->main_vector.max_stack);
     RUN_ACTIV.pc = 0;

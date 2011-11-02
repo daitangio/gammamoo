@@ -284,6 +284,7 @@ bf_verb_info(Var arglist, Byte next, void *vdata, Objid progr)
     else if (!db_verb_allows(h, progr, VF_READ))
 	return make_error_pack(E_PERM);
 
+    h = db_dup_verb_handle(h);
     r = new_list(3);
     r.v.list[1].type = TYPE_OBJ;
     r.v.list[1].v.obj = db_verb_owner(h);
@@ -302,6 +303,7 @@ bf_verb_info(Var arglist, Byte next, void *vdata, Objid progr)
     r.v.list[2].v.str = str_dup(perms);
     r.v.list[3].type = TYPE_STR;
     r.v.list[3].v.str = str_ref(db_verb_names(h));
+    db_free_verb_handle(h);
 
     return make_var_pack(r);
 }
@@ -331,17 +333,20 @@ bf_set_verb_info(Var arglist, Byte next, void *vdata, Objid progr)
     h = find_described_verb(oid, desc);
     free_var(arglist);
 
+    h = db_dup_verb_handle(h);
     if (!h.ptr) {
 	free_str(new_names);
 	return make_error_pack(E_VERBNF);
     } else if (!db_verb_allows(h, progr, VF_WRITE)
 	       || (!is_wizard(progr) && db_verb_owner(h) != new_owner)) {
+	db_free_verb_handle(h);
 	free_str(new_names);
 	return make_error_pack(E_PERM);
     }
     db_set_verb_owner(h, new_owner);
     db_set_verb_flags(h, new_flags);
     db_set_verb_names(h, new_names);
+    db_free_verb_handle(h);
 
     return no_var_pack();
 }
@@ -498,10 +503,12 @@ bf_set_verb_code(Var arglist, Byte next, void *vdata, Objid progr)
 	return make_error_pack(e);
     }
     h = find_described_verb(oid, desc);
+    h = db_dup_verb_handle(h);
     if (!h.ptr) {
 	free_var(arglist);
 	return make_error_pack(E_VERBNF);
     } else if (!is_programmer(progr) || !db_verb_allows(h, progr, VF_WRITE)) {
+	db_free_verb_handle(h);
 	free_var(arglist);
 	return make_error_pack(E_PERM);
     }
@@ -512,6 +519,7 @@ bf_set_verb_code(Var arglist, Byte next, void *vdata, Objid progr)
 	else
 	    db_set_verb_program(h, program);
     }
+    db_free_verb_handle(h);
     free_var(arglist);
     return make_var_pack(errors);
 }

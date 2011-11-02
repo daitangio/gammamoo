@@ -531,6 +531,7 @@ start_programming(tqueue * tq, char *argstr)
 	tq->program_stream = new_stream(100);
 	tq->program_object = db_verb_definer(h);
 	tq->program_verb = str_dup(vname);
+	db_free_verb_handle(h);
     }
 }
 
@@ -585,6 +586,7 @@ end_programming(tqueue * tq)
 	    Program *program;
 	    char buf[30];
 
+	    h = db_dup_verb_handle(h);
 	    s.player = tq->player;
 	    s.nerrors = 0;
 	    s.input = stream_contents(tq->program_stream);
@@ -599,6 +601,7 @@ end_programming(tqueue * tq)
 		notify(player, "Verb programmed.");
 	    } else
 		notify(player, "Verb not programmed.");
+	    db_free_verb_handle(h);
 	}
     }
 
@@ -1594,6 +1597,7 @@ find_verb_for_programming(Objid player, const char *verbref,
     desc.type = TYPE_STR;
     desc.v.str = *vname;
     h = find_described_verb(oid, desc);
+    h = db_dup_verb_handle(h);
     free_str(copy);
 
     if (!h.ptr)
@@ -1602,6 +1606,7 @@ find_verb_for_programming(Objid player, const char *verbref,
 	     || (server_flag_option("protect_set_verb_code", 0)
 		 && !is_wizard(player))) {
 	*message = "Permission denied.";
+	db_free_verb_handle(h);
 	h.ptr = 0;
     } else {
 	stream_printf(str, "Now programming %s:%s.  Use \".\" to end.",

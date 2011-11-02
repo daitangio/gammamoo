@@ -491,6 +491,9 @@ extern db_verb_handle db_find_indexed_verb(Objid oid, unsigned index);
 				 * leave the handle intact.
 				 */
 
+extern db_verb_handle db_dup_verb_handle(db_verb_handle);
+extern void db_free_verb_handle(db_verb_handle);
+
 extern Objid db_verb_definer(db_verb_handle);
 				/* Returns the object on which the given verb
 				 * is defined.

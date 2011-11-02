@@ -786,6 +786,7 @@ emergency_mode()
 			printf("Verb not programmed.\n");
 		    }
 
+		    db_free_verb_handle(h);
 		    free_var(code);
 		    free_var(errors);
 		}
@@ -801,6 +802,7 @@ emergency_mode()
 				    MAIN_VECTOR);
 		else
 		    printf("%s\n", message);
+		db_free_verb_handle(h);
 	    } else if (!mystrcasecmp(command, "disassemble") && nargs == 1) {
 		const char *verbref = words.v.list[2].v.str;
 		db_verb_handle h;
@@ -812,6 +814,7 @@ emergency_mode()
 		    disassemble_to_file(stdout, db_verb_program(h));
 		else
 		    printf("%s\n", message);
+		db_free_verb_handle(h);
 	    } else if (!mystrcasecmp(command, "abort") && nargs == 0) {
 	        printf("Bye.  (%s)\n\n", "NOT saving database");
 		exit(1);
