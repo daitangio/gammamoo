@@ -28,7 +28,7 @@
 #include "streams.h"
 #include "structures.h"
 #include "unparse.h"
-#include "utils.h" 
+#include "utils.h"
 
 /*****************************************************************************
  * This is the table of procedures that register MOO built-in functions.  To
@@ -39,9 +39,10 @@
  * files to the `CSRCS' line in the Makefile.
  ****************************************************************************/
 
-typedef void (*registry)();
+typedef void (*registry) ();
 
-static registry	bi_function_registries[] = {
+static registry bi_function_registries[] =
+{
     register_disassemble,
     register_extensions,
     register_execute,
@@ -63,24 +64,25 @@ void
 register_bi_functions()
 {
     int loop, num_registries =
-	sizeof(bi_function_registries) / sizeof(bi_function_registries[0]);
+    sizeof(bi_function_registries) / sizeof(bi_function_registries[0]);
 
     for (loop = 0; loop < num_registries; loop++)
-	(void) (*(bi_function_registries[loop]))();
+	(void) (*(bi_function_registries[loop])) ();
 }
 
 /*** register ***/
 
 struct bft_entry {
-    const char         *name;
-    const char	       *protect_str;
-    const char	       *verb_str;
-    int                 minargs;
-    int                 maxargs;
-    var_type	       *prototype;
-    bf_type             func;
-    bf_read_type	read;
-    bf_write_type	write;
+    const char *name;
+    const char *protect_str;
+    const char *verb_str;
+    int minargs;
+    int maxargs;
+    var_type *prototype;
+    bf_type func;
+    bf_read_type read;
+    bf_write_type write;
+    int protected;
 };
 
 static struct bft_entry bf_table[MAX_FUNC];
@@ -90,9 +92,9 @@ static unsigned
 register_common(const char *name, int minargs, int maxargs, bf_type func,
 		bf_read_type read, bf_write_type write, va_list args)
 {
-    int			va_index;
-    int			num_arg_types = maxargs == -1 ? minargs : maxargs;
-    static Stream      *s = 0;
+    int va_index;
+    int num_arg_types = maxargs == -1 ? minargs : maxargs;
+    static Stream *s = 0;
 
     if (!s)
 	s = new_stream(30);
@@ -101,7 +103,6 @@ register_common(const char *name, int minargs, int maxargs, bf_type func,
 	errlog("too many functions.  %s cannot be registered.\n", name);
 	return 0;
     }
-
     bf_table[top_bf_table].name = str_dup(name);
     stream_printf(s, "protect_%s", name);
     bf_table[top_bf_table].protect_str = str_dup(reset_stream(s));
@@ -112,6 +113,7 @@ register_common(const char *name, int minargs, int maxargs, bf_type func,
     bf_table[top_bf_table].func = func;
     bf_table[top_bf_table].read = read;
     bf_table[top_bf_table].write = write;
+    bf_table[top_bf_table].protected = 0;
 
     if (num_arg_types > 0)
 	bf_table[top_bf_table].prototype =
@@ -119,14 +121,14 @@ register_common(const char *name, int minargs, int maxargs, bf_type func,
     else
 	bf_table[top_bf_table].prototype = 0;
     for (va_index = 0; va_index < num_arg_types; va_index++)
-        bf_table[top_bf_table].prototype[va_index] = va_arg(args, var_type);
+	bf_table[top_bf_table].prototype[va_index] = va_arg(args, var_type);
 
     return top_bf_table++;
 }
-     
+
 unsigned
 register_function(const char *name, int minargs, int maxargs,
-		  bf_type func, ...)
+		  bf_type func,...)
 {
     va_list args;
     unsigned ans;
@@ -136,11 +138,11 @@ register_function(const char *name, int minargs, int maxargs,
     va_end(args);
     return ans;
 }
-  
+
 unsigned
 register_function_with_read_write(const char *name, int minargs, int maxargs,
 				  bf_type func, bf_read_type read,
-				  bf_write_type write, ...)
+				  bf_write_type write,...)
 {
     va_list args;
     unsigned ans;
@@ -156,8 +158,8 @@ register_function_with_read_write(const char *name, int minargs, int maxargs,
 static const char *func_not_found_msg = "no such function";
 
 const char *
-name_func_by_num(unsigned n) /* used by unparse only */
-{
+name_func_by_num(unsigned n)
+{				/* used by unparse only */
     if (n >= top_bf_table)
 	return func_not_found_msg;
     else
@@ -165,8 +167,8 @@ name_func_by_num(unsigned n) /* used by unparse only */
 }
 
 unsigned
-number_func_by_name(const char *name) /* used by parser only */
-{
+number_func_by_name(const char *name)
+{				/* used by parser only */
     unsigned i;
 
     for (i = 0; i < top_bf_table; i++)
@@ -178,30 +180,30 @@ number_func_by_name(const char *name) /* used by parser only */
 
 /*** calling built-in functions ***/
 
-package 
-call_bi_func(unsigned n, Var arglist, Byte func_pc, 
+package
+call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	     Objid progr, void *vdata)
      /* requires arglist.type == TYPE_LIST
-	call_bi_func will free arglist */
+        call_bi_func will free arglist */
 {
-    struct bft_entry    *f;
+    struct bft_entry *f;
 
     if (n >= top_bf_table) {
 	errlog("CALL_BI_FUNC: Unknown function number: %d\n", n);
 	free_var(arglist);
 	return no_var_pack();
     }
-
     f = bf_table + n;
 
-    if (func_pc == 1) { /* check arg types and count *ONLY* for first entry */
+    if (func_pc == 1) {		/* check arg types and count *ONLY* for first entry */
 	int k, max;
 	Var *args = arglist.v.list;
 
 	/*
 	 * Check permissions, if protected
 	 */
-	if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str)) {
+	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str)) { */
+	if (caller() != SYSTEM_OBJECT && f->protected) {
 	    /* Try calling #0:bf_FUNCNAME(@ARGS) instead */
 	    enum error e = call_verb(SYSTEM_OBJECT, f->verb_str, arglist, 0);
 
@@ -213,7 +215,6 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 		return make_error_pack(e == E_MAXREC ? e : E_PERM);
 	    }
 	}
-
 	/*
 	 * Check argument count
 	 * (Can't always check in the compiler, because of @)
@@ -223,20 +224,19 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	    free_var(arglist);
 	    return make_error_pack(E_ARGS);
 	}
-
 	/*
 	 * Check argument types
 	 */
 	max = (f->maxargs == -1) ? f->minargs : args[0].v.num;
 
 	for (k = 0; k < max; k++) {
-	    var_type	proto = f->prototype[k];
-	    var_type	arg = args[k+1].type;
-	    
-	    if (! (proto == TYPE_ANY
-		   || (proto == TYPE_NUMERIC && (arg == TYPE_INT
-						 || arg == TYPE_FLOAT))
-		   || proto == arg)) {
+	    var_type proto = f->prototype[k];
+	    var_type arg = args[k + 1].type;
+
+	    if (!(proto == TYPE_ANY
+		  || (proto == TYPE_NUMERIC && (arg == TYPE_INT
+						|| arg == TYPE_FLOAT))
+		  || proto == arg)) {
 		free_var(arglist);
 		return make_error_pack(E_TYPE);
 	    }
@@ -247,21 +247,20 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	 */
 	return make_var_pack(arglist);
     }
-
     /*
      * do the function
      */
-    return (*(f->func))(arglist, func_pc, vdata, progr);
+    return (*(f->func)) (arglist, func_pc, vdata, progr);
     /* f->func is responsible for freeing/using up arglist. */
 }
 
 void
 write_bi_func_data(void *vdata, Byte f_id)
 {
-    if (f_id >= top_bf_table) 
+    if (f_id >= top_bf_table)
 	errlog("WRITE_BI_FUNC_DATA: Unknown function number: %d\n", f_id);
     else if (bf_table[f_id].write)
-	(*(bf_table[f_id].write))(vdata);  
+	(*(bf_table[f_id].write)) (vdata);
 }
 
 static Byte *pc_for_bi_func_data_being_read;
@@ -273,16 +272,16 @@ pc_for_bi_func_data(void)
 }
 
 int
-read_bi_func_data(Byte f_id, void **bi_func_state, Byte *bi_func_pc)
+read_bi_func_data(Byte f_id, void **bi_func_state, Byte * bi_func_pc)
 {
     pc_for_bi_func_data_being_read = bi_func_pc;
-    
+
     if (f_id >= top_bf_table) {
 	errlog("READ_BI_FUNC_DATA: Unknown function number: %d\n", f_id);
 	*bi_func_state = 0;
 	return 0;
     } else if (bf_table[f_id].read) {
-	*bi_func_state = (*(bf_table[f_id].read))();
+	*bi_func_state = (*(bf_table[f_id].read)) ();
 	if (*bi_func_state == 0) {
 	    errlog("READ_BI_FUNC_DATA: Can't read data for %s()\n",
 		   bf_table[f_id].name);
@@ -307,7 +306,7 @@ read_bi_func_data(Byte f_id, void **bi_func_state, Byte *bi_func_pc)
 
 package
 make_error_pack(enum error err)
-{ 
+{
     return make_raise_pack(err, unparse_error(err), zero);
 }
 
@@ -315,13 +314,13 @@ package
 make_raise_pack(enum error err, const char *msg, Var value)
 {
     package p;
-    
+
     p.kind = BI_RAISE;
     p.u.raise.code.type = TYPE_ERR;
     p.u.raise.code.v.err = err;
     p.u.raise.msg = str_dup(msg);
     p.u.raise.value = value;
-    
+
     return p;
 }
 
@@ -329,10 +328,10 @@ package
 make_var_pack(Var v)
 {
     package p;
-    
+
     p.kind = BI_RETURN;
     p.u.ret = v;
-    
+
     return p;
 }
 
@@ -361,9 +360,9 @@ tail_call_pack(void)
 }
 
 package
-make_suspend_pack(enum error (*proc)(vm, void *), void *data)
+make_suspend_pack(enum error(*proc) (vm, void *), void *data)
 {
-    package	p;
+    package p;
 
     p.kind = BI_SUSPEND;
     p.u.susp.proc = proc;
@@ -375,9 +374,9 @@ make_suspend_pack(enum error (*proc)(vm, void *), void *data)
 static Var
 function_description(int i)
 {
-    struct bft_entry	entry;
-    Var			v, vv;
-    int			j, nargs;
+    struct bft_entry entry;
+    Var v, vv;
+    int j, nargs;
 
     entry = bf_table[i];
     v = new_list(4);
@@ -400,9 +399,9 @@ function_description(int i)
 static package
 bf_function_info(Var arglist, Byte next, void *vdata, Objid progr)
 {
-    Var	r;
-    int	i;
-    
+    Var r;
+    int i;
+
     if (arglist.v.list[0].v.num == 1) {
 	i = number_func_by_name(arglist.v.list[1].v.str);
 	if (i == FUNC_NOT_FOUND) {
@@ -420,18 +419,56 @@ bf_function_info(Var arglist, Byte next, void *vdata, Objid progr)
     return make_var_pack(r);
 }
 
+static void
+load_server_protect_flags(void)
+{
+    int i;
+
+    for (i = 0; i < top_bf_table; i++) {
+	bf_table[i].protected = server_flag_option(bf_table[i].protect_str);
+    }
+    oklog("Loaded protect cache for %d builtins\n", i);
+}
+
+void
+load_server_options(void)
+{
+    load_server_protect_flags();
+}
+
+static package
+bf_load_server_options(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    free_var(arglist);
+
+    if (!is_wizard(progr)) {
+	return make_error_pack(E_PERM);
+    }
+    load_server_options();
+
+    return no_var_pack();
+}
+
 void
 register_functions(void)
 {
     register_function("function_info", 0, 1, bf_function_info, TYPE_STR);
+    register_function("load_server_options", 0, 0, bf_load_server_options);
 }
 
 char rcsid_functions[] = "$Id$";
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:00  nop
-/* Initial revision
+/* Revision 1.3  1997/03/03 05:03:50  nop
+/* steak2: move protectedness into builtin struct, load_server_options()
+/* now required for $server_options updates.
 /*
+ * Revision 1.2  1997/03/03 04:18:42  nop
+ * GNU Indent normalization
+ *
+ * Revision 1.1.1.1  1997/03/03 03:45:00  nop
+ * LambdaMOO 1.8.0p5
+ *
  * Revision 2.6  1996/04/19  01:20:49  pavel
  * Fixed bug in how $bf_FOO() verbs are called to override built-in functions.
  * Added code to screen out the worst of the problems this bug could

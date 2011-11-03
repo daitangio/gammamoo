@@ -20,6 +20,12 @@
 
 #include "config.h"
 
+/* The Linux manpage for select indicates that sys/time.h is necessary
+   for the FD_ZERO et al declarations.  If this causes problems on
+   other systems, we'll have to put this into autoconf.     --Jay */
+
+#include <sys/time.h>
+
 #include <sys/types.h>
 
 #if NEED_BSDTYPES_H
@@ -31,14 +37,20 @@
 #define	FD_ZERO(p)	bzero((char *)(p), sizeof(*(p)))
 #define	FD_SET(n, p)	((p)->fds_bits[0] |= (1L<<((n)%NFDBITS)))
 #define	FD_ISSET(n, p)	((p)->fds_bits[0] &  (1L<<((n)%NFDBITS)))
-#endif /* FD_ZERO */
+#endif				/* FD_ZERO */
 
-#endif /* !My_Types_h */
+#endif				/* !My_Types_h */
 
 /* $Log$
-/* Revision 1.1  1997/03/03 03:45:05  nop
-/* Initial revision
+/* Revision 1.3  1997/03/03 06:39:28  nop
+/* sys/time.h necessary for FD_ZERO et al...maybe.
 /*
+ * Revision 1.2  1997/03/03 04:18:58  nop
+ * GNU Indent normalization
+ *
+ * Revision 1.1.1.1  1997/03/03 03:45:05  nop
+ * LambdaMOO 1.8.0p5
+ *
  * Revision 2.1  1996/02/08  06:00:13  pavel
  * Updated copyright notice for 1996.  Release 1.8.0beta1.
  *
