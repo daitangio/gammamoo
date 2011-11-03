@@ -107,7 +107,14 @@ struct mapping ext_mappings[] =
     {EOP_CONTINUE, "CONTINUE"},
     {EOP_WHILE_ID, "WHILE_ID"},
     {EOP_EXIT, "EXIT"},
-    {EOP_EXIT_ID, "EXIT_ID"}};
+    {EOP_EXIT_ID, "EXIT_ID"},
+    {EOP_SHL, "SHL"},
+    {EOP_SHR, "SHR"},
+    {EOP_BAND, "BAND"},
+    {EOP_BOR, "BOR"},
+    {EOP_BXOR, "BXOR"},
+    {EOP_BNOT, "BNOT"},
+};
 
 static void
 initialize_tables(void)

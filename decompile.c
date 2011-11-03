@@ -560,6 +560,26 @@ decompile(Bytecodes bc, Byte * start, Byte * end, Stmt ** stmt_sink,
 		case EOP_EXP:
 		    kind = EXPR_EXP;
 		    goto finish_binary;
+		case EOP_SHL:
+		    kind = EXPR_SHL;
+		    goto finish_binary;
+		case EOP_SHR:
+		    kind = EXPR_SHR;
+		    goto finish_binary;
+		case EOP_BAND:
+		    kind = EXPR_BAND;
+		    goto finish_binary;
+		case EOP_BOR:
+		    kind = EXPR_BOR;
+		    goto finish_binary;
+		case EOP_BXOR:
+		    kind = EXPR_BXOR;
+		    goto finish_binary;
+		case EOP_BNOT:
+		    e = alloc_expr(EXPR_BNOT);
+		    e->e.expr = pop_expr();
+		    push_expr(HOT_OP1(e->e.expr, e));
+		    break;
 		case EOP_SCATTER:
 		    {
 			Scatter *sc, **scp;

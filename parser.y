@@ -103,11 +103,13 @@ static int	check_loop_name(char *, enum loop_exit_kind);
 %right	'='
 %nonassoc '?' '|'
 %left	tOR tAND
+%left	tBOR tBAND tBXOR
 %left   tEQ tNE '<' tLE '>' tGE tIN
+%left	tSHL tSHR
 %left	'+' '-'
 %left	'*' '/' '%'
 %right	'^'
-%left	'!' tUNARYMINUS
+%left	'!' tUNARYMINUS '~'
 %nonassoc '.' ':' '[' '$'
 
 %%
@@ -547,6 +549,14 @@ expr:
 		{
 		    $$ = alloc_binary(EXPR_EXP, $1, $3);
 		}
+	| expr tSHL expr
+		{
+		    $$ = alloc_binary(EXPR_SHL, $1, $3);
+		}
+	| expr tSHR expr
+		{
+		    $$ = alloc_binary(EXPR_SHR, $1, $3);
+		}
 	| expr tAND expr
 		{
 		    $$ = alloc_binary(EXPR_AND, $1, $3);
@@ -554,6 +564,18 @@ expr:
 	| expr tOR expr
 		{
 		    $$ = alloc_binary(EXPR_OR, $1, $3);
+		}
+	| expr tBAND expr
+		{
+		    $$ = alloc_binary(EXPR_BAND, $1, $3);
+		}
+	| expr tBOR expr
+		{
+		    $$ = alloc_binary(EXPR_BOR, $1, $3);
+		}
+	| expr tBXOR expr
+		{
+		    $$ = alloc_binary(EXPR_BXOR, $1, $3);
 		}
 	| expr tEQ expr
 		{
@@ -603,6 +625,11 @@ expr:
 			$$ = alloc_expr(EXPR_NEGATE);
 			$$->e.expr = $2;
 		    }
+		}
+	| '~' expr
+		{
+		    $$ = alloc_expr(EXPR_BNOT);
+		    $$->e.expr = $2;
 		}
 	| '!' expr
 		{
@@ -1006,14 +1033,19 @@ start_over:
     }
 
     switch(c) {
-      case '>':         return follow('=', tGE, '>');
-      case '<':         return follow('=', tLE, '<');
+      case '>':		return follow('=', 1, 0) ? tGE
+			     : follow('>', tSHR, '>');
+      case '<':		return follow('=', 1, 0) ? tLE
+			     : follow('<', tSHL, '<');
       case '=':         return ((c = follow('=', tEQ, 0))
 				? c
 				: follow('>', tARROW, '='));
       case '!':         return follow('=', tNE, '!');
-      case '|':         return follow('|', tOR, '|');
-      case '&':         return follow('&', tAND, '&');
+      case '|':		return follow('|', 1, 0) ? tOR
+			     : follow('.', tBOR, '|');
+      case '^':		return follow('.', tBXOR, '^');
+      case '&':		return follow('&', 1, 0) ? tAND
+			     : follow('.', tBAND, '&');
       normal_dot:
       case '.':		return follow('.', tTO, '.');
       default:          return c;

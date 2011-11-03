@@ -2559,6 +2559,13 @@ Version X, in progress
 	-- load_server_options() is not required before their protect_FUNCNAME
 	   property takes effect
 -- Added support for scattering in `for' statements.
+-- Added support for bitshift and bitwise operators:
+	X << Y	Bitshift left  operation
+	X >> Y	Bitshift right operation
+	X &. Y	Bitwise  AND   operation
+	X |. Y	Bitwise   OR   operation
+	X ^. Y	Bitwise  XOR   operation
+	~X	Bitwise  NOT   operation
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by
