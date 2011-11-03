@@ -2558,6 +2558,7 @@ Version X, in progress
 	   directly
 	-- load_server_options() is not required before their protect_FUNCNAME
 	   property takes effect
+-- Added support for scattering in `for' statements.
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by
