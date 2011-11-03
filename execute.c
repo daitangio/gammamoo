@@ -1724,18 +1724,61 @@ do {    						    	\
 		    break;
 
 		case EOP_EXP:
+		case EOP_SHL:
+		case EOP_SHR:
+		case EOP_BAND:
+		case EOP_BOR:
+		case EOP_BXOR:
 		    {
 			Var lhs, rhs, ans;
 
 			rhs = POP();
 			lhs = POP();
-			ans = do_power(lhs, rhs);
+			switch (eop) {
+			case EOP_EXP:
+			    ans = do_power(lhs, rhs);
+			    break;
+			case EOP_SHL:
+			    ans = do_bitshift_left(lhs, rhs);
+			    break;
+			case EOP_SHR:
+			    ans = do_bitshift_right(lhs, rhs);
+			    break;
+			case EOP_BAND:
+			    ans = do_bitwise_and(lhs, rhs);
+			    break;
+			case EOP_BOR:
+			    ans = do_bitwise_or(lhs, rhs);
+			    break;
+			case EOP_BXOR:
+			    ans = do_bitwise_xor(lhs, rhs);
+			    break;
+			default:
+			    errlog("RUN: Impossible extended opcode in binary"
+				   " ops: %d\n", op);
+			}
 			free_var(lhs);
 			free_var(rhs);
 			if (ans.type == TYPE_ERR)
 			    PUSH_ERROR(ans.v.err);
 			else
 			    PUSH(ans);
+		    }
+		    break;
+
+		case EOP_BNOT:
+		    {
+			Var arg, ans;
+
+			arg = POP();
+			if (arg.type != TYPE_INT) {
+			    PUSH_ERROR(E_TYPE);
+			} else {
+			    ans.type = TYPE_INT;
+			    ans.v.num = ~arg.v.num;
+			    PUSH(ans);
+			}
+			free_var(arg);
 		    }
 		    break;
 

@@ -387,6 +387,29 @@ do_power(Var lhs, Var rhs)
     ans.v.err = E_TYPE;
     return ans;
 }
+
+#define SIMPLE_INT_BINARY(name, op)				\
+		Var						\
+		do_ ## name(Var a, Var b)			\
+		{						\
+		    Var ans;					\
+								\
+		    if (a.type != b.type || a.type != TYPE_INT) { \
+			ans.type = TYPE_ERR;			\
+			ans.v.err = E_TYPE;			\
+		    } else {					\
+			ans.type = TYPE_INT;			\
+			ans.v.num = a.v.num op b.v.num;		\
+		    }						\
+								\
+		    return ans;					\
+		}
+SIMPLE_INT_BINARY(bitshift_left, <<)
+SIMPLE_INT_BINARY(bitshift_right, >>)
+SIMPLE_INT_BINARY(bitwise_and, &)
+SIMPLE_INT_BINARY(bitwise_or, |)
+SIMPLE_INT_BINARY(bitwise_xor, ^)
+
 
 /**** built in functions ****/
 

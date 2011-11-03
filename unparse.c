@@ -131,37 +131,45 @@ static struct prec prec_table[] =
     {EXPR_OR, 3},
     {EXPR_AND, 3},
 
-    {EXPR_EQ, 4},
-    {EXPR_NE, 4},
-    {EXPR_LT, 4},
-    {EXPR_LE, 4},
-    {EXPR_GT, 4},
-    {EXPR_GE, 4},
-    {EXPR_IN, 4},
+    {EXPR_BAND, 4},
+    {EXPR_BOR, 4},
+    {EXPR_BXOR, 4},
 
-    {EXPR_PLUS, 5},
-    {EXPR_MINUS, 5},
+    {EXPR_EQ, 5},
+    {EXPR_NE, 5},
+    {EXPR_LT, 5},
+    {EXPR_LE, 5},
+    {EXPR_GT, 5},
+    {EXPR_GE, 5},
+    {EXPR_IN, 5},
 
-    {EXPR_TIMES, 6},
-    {EXPR_DIVIDE, 6},
-    {EXPR_MOD, 6},
+    {EXPR_SHL, 6},
+    {EXPR_SHR, 6},
 
-    {EXPR_EXP, 7},
+    {EXPR_PLUS, 7},
+    {EXPR_MINUS, 7},
 
-    {EXPR_NEGATE, 8},
-    {EXPR_NOT, 8},
+    {EXPR_TIMES, 8},
+    {EXPR_DIVIDE, 8},
+    {EXPR_MOD, 8},
 
-    {EXPR_PROP, 9},
-    {EXPR_VERB, 9},
-    {EXPR_INDEX, 9},
-    {EXPR_RANGE, 9},
+    {EXPR_EXP, 9},
 
-    {EXPR_VAR, 10},
-    {EXPR_ID, 10},
-    {EXPR_LIST, 10},
-    {EXPR_CALL, 10},
-    {EXPR_LENGTH, 10},
-    {EXPR_CATCH, 10}
+    {EXPR_NEGATE, 10},
+    {EXPR_NOT, 10},
+    {EXPR_BNOT, 10},
+
+    {EXPR_PROP, 11},
+    {EXPR_VERB, 11},
+    {EXPR_INDEX, 11},
+    {EXPR_RANGE, 11},
+
+    {EXPR_VAR, 12},
+    {EXPR_ID, 12},
+    {EXPR_LIST, 12},
+    {EXPR_CALL, 12},
+    {EXPR_LENGTH, 12},
+    {EXPR_CATCH, 12}
 };
 
 static int expr_prec[SizeOf_Expr_Kind];
@@ -176,6 +184,9 @@ static struct binop binop_table[] =
     {EXPR_IN, " in "},
     {EXPR_OR, " || "},
     {EXPR_AND, " && "},
+    {EXPR_BAND, " &. "},
+    {EXPR_BOR, " |. "},
+    {EXPR_BXOR, " ^. "},
     {EXPR_EQ, " == "},
     {EXPR_NE, " != "},
     {EXPR_LT, " < "},
@@ -188,6 +199,8 @@ static struct binop binop_table[] =
     {EXPR_DIVIDE, " / "},
     {EXPR_MOD, " % "},
     {EXPR_EXP, " ^ "},
+    {EXPR_SHL, " << "},
+    {EXPR_SHR, " >> "},
 };
 
 static const char *binop_string[SizeOf_Expr_Kind];
@@ -563,6 +576,9 @@ unparse_expr(Stream * str, Expr * expr)
     case EXPR_MOD:
     case EXPR_AND:
     case EXPR_OR:
+    case EXPR_BAND:
+    case EXPR_BOR:
+    case EXPR_BXOR:
     case EXPR_EQ:
     case EXPR_NE:
     case EXPR_LT:
@@ -570,6 +586,8 @@ unparse_expr(Stream * str, Expr * expr)
     case EXPR_LE:
     case EXPR_GE:
     case EXPR_IN:
+    case EXPR_SHL:
+    case EXPR_SHR:
 	bracket_lt(str, expr->kind, expr->e.bin.lhs);
 	stream_add_string(str, binop_string[expr->kind]);
 	bracket_le(str, expr->kind, expr->e.bin.rhs);
@@ -598,6 +616,11 @@ unparse_expr(Stream * str, Expr * expr)
     case EXPR_NOT:
 	stream_add_char(str, '!');
 	bracket_lt(str, EXPR_NOT, expr->e.expr);
+	break;
+
+    case EXPR_BNOT:
+	stream_add_char(str, '~');
+	bracket_lt(str, EXPR_BNOT, expr->e.expr);
 	break;
 
     case EXPR_VAR:

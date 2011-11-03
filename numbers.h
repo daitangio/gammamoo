@@ -30,6 +30,11 @@ extern Var do_multiply(Var, Var);
 extern Var do_divide(Var, Var);
 extern Var do_modulus(Var, Var);
 extern Var do_power(Var, Var);
+extern Var do_bitshift_right(Var, Var);
+extern Var do_bitshift_left(Var, Var);
+extern Var do_bitwise_and(Var, Var);
+extern Var do_bitwise_or(Var, Var);
+extern Var do_bitwise_xor(Var, Var);
 
 /* 
  * $Log$
