@@ -2576,6 +2576,8 @@ Version X, in progress
 -- Specific property names can be reserved, preventing them from being used by
    new or renamed properties. By default, the "class" property is blocked to
    ensure future WAIF compatibility.
+-- The `restart' and `restart.sh' scripts have been modified to use gzip
+   instead of the old `compress' program.
 
 **** Changes relevant to server hackers:
 -- Makefile now uses gperf (3.0.1+) to generate keywords.c
