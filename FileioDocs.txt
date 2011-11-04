@@ -67,6 +67,7 @@
     FILE_SUBDIR                 the File I/O jail directory
     FILE_IO_BUFFER_LENGTH       the maximum line/data length
     FILE_IO_LOGGER_SUBDIR       the logger jail directory
+    FILE_IO_LOGGER_UMASK        define to restrict umask for log files
     FILE_IO_LOGGER_FORMAT       printf format used for log filenames
     FILE_IO_LOGGER_FORMAT_VARS  variables used for strftime formatting
                                 pick from: time, counter, and pathname

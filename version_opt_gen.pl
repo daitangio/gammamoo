@@ -57,6 +57,7 @@ my @options =
 
    _DDEF => [qw(FILE_IO_LOGGER)],
    _DSTR => [qw(FILE_IO_LOGGER_SUBDIR)],
+   _DDEF => [qw(FILE_IO_LOGGER_UMASK)],
    _DSTR => [qw(FILE_IO_LOGGER_FORMAT)],
    _DLIT => [qw(FILE_IO_LOGGER_FORMAT_VARS)],
    _DSTR => [qw(FILE_IO_LOGGER_FORMAT_TIME)],

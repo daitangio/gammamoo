@@ -6,7 +6,8 @@
 
 #if defined(FILE_IO) || defined(FILE_IO_LOGGER)
 
-static const char *logger_pfx = "/LOG/";
+static const char logger_pfx[] = "/LOG/";
+#define LOGGER_PFX_LEN (sizeof(logger_pfx) - 1)
 
 #include <stdio.h>
 
@@ -135,7 +136,7 @@ struct line_buffer {
 char file_package_name[]    = "FIO";
 char file_package_version[] = "1.5p3";
 const char *file_logger_name    = "FIO Logger";
-const char *file_logger_version = "0.1";
+const char *file_logger_version = "0.2";
 
 
 /***************************************************************
@@ -298,7 +299,14 @@ file_modestr_to_mode(const char *s, file_type *type, file_mode *mode)
 	return NULL;
 
     if (s[1] == '+') {
-	m |= (s[0] == 'r') ? FILE_O_WRITE : FILE_O_READ;
+	if (s[0] == 'r')
+#ifdef FILE_IO
+	    m |= FILE_O_WRITE;
+#else
+	    return NULL;
+#endif
+	else
+	m |= FILE_O_READ;
 	buffer[p++] = '+';
     } else if (s[1] != '-') {
 	return NULL;
@@ -457,9 +465,9 @@ file_resolve_path(const char *pathname)
 	return NULL;
 
 #ifdef FILE_IO_LOGGER
-    if (!strncmp(pathname, logger_pfx, 5))
+    if (!strncmp(pathname, logger_pfx, LOGGER_PFX_LEN))
     {
-	pathname += 5;
+	pathname += LOGGER_PFX_LEN;
 	islog = 1;
     }
 #ifndef FILE_IO
@@ -485,12 +493,14 @@ file_resolve_path(const char *pathname)
 
 #ifdef FILE_IO_LOGGER
 int file_log_insert_id(file_mode *rmode, const char **filename, const char **real_filename) {
-    if (strncmp(*filename, logger_pfx, 5))
+    if (strncmp(*filename, logger_pfx, LOGGER_PFX_LEN))
+	return 0;
+    if (!(*rmode & FILE_O_WRITE))
 	return 0;
 
     {
 	static Stream *s = 0;
-	const char *pathname = *filename + 5;
+	const char *pathname = *filename + LOGGER_PFX_LEN;
 
 	if (!s)
 	    s = new_stream(strlen(*filename) + 64);
@@ -498,7 +508,6 @@ int file_log_insert_id(file_mode *rmode, const char **filename, const char **rea
 	*rmode |= FILE_O_LOG;
 	stream_add_string(s, logger_pfx);
 
-	if (*rmode & FILE_O_WRITE)
 	{
 	    static unsigned int counter = 0;
 #ifdef FILE_IO_LOGGER_FORMAT_TIME
@@ -511,6 +520,9 @@ int file_log_insert_id(file_mode *rmode, const char **filename, const char **rea
 	    stream_printf(s, FILE_IO_LOGGER_FORMAT, FILE_IO_LOGGER_FORMAT_VARS);
 	    *filename = reset_stream(s);
 	    *real_filename = file_resolve_path(*filename);
+
+	    if (!*real_filename)
+		return 2;
 	}
     }
 
@@ -583,7 +595,7 @@ bf_file_open(Var arglist, Byte next, void *vdata, Objid progr)
 #endif
     else if ((fhandle = file_handle_new(filename, type, rmode)).v.num < 0)
 	r = make_raise_pack(E_QUOTA, "Too many files open", zero);
-#ifdef FILE_IO_LOGGER
+#if defined(FILE_IO_LOGGER) && defined(FILE_IO_LOGGER_UMASK)
     else if ((rmode & FILE_O_LOG) && (
 	     old_mask = umask(0),
 	     umask(old_mask | S_IWUSR | S_IWGRP | S_IWOTH),
@@ -1589,7 +1601,7 @@ bf_file_remove(Var arglist, Byte next, void *vdata, Objid progr)
     if (!file_verify_caller(progr)) {
 	r = file_raise_notokcall("file_remove", progr);
 #ifdef FILE_IO_LOGGER
-    } else if (!strncmp(pathspec, logger_pfx, 5)) {
+    } else if (!strncmp(pathspec, logger_pfx, LOGGER_PFX_LEN)) {
 	r = make_raise_pack(E_PERM, "Cannot remove logs",
 			    var_ref(arglist.v.list[1]));
 #endif
@@ -1621,8 +1633,8 @@ bf_file_rename(Var arglist, Byte next, void *vdata, Objid progr)
     if (!file_verify_caller(progr)) {
 	r = file_raise_notokcall("file_rename", progr);
 #ifdef FILE_IO_LOGGER
-    } else if (!strncmp(fromspec, logger_pfx, 5) ||
-	       !strncmp(tospec, logger_pfx, 5)) {
+    } else if (!strncmp(fromspec, logger_pfx, LOGGER_PFX_LEN) ||
+	       !strncmp(tospec, logger_pfx, LOGGER_PFX_LEN)) {
 	r = make_raise_pack(E_PERM, "Cannot rename logs",
 			    var_ref(arglist.v.list[1]));
 #endif
@@ -1686,7 +1698,7 @@ bf_file_chmod(Var arglist, Byte next, void *vdata, Objid progr)
     } else if (!file_chmodstr_to_mode(modespec, &newmode)) {
 	r = make_raise_pack(E_INVARG, "Invalid mode string", zero);
 #ifdef FILE_IO_LOGGER
-    } else if (!strncmp(pathspec, logger_pfx, 5)) {
+    } else if (!strncmp(pathspec, logger_pfx, LOGGER_PFX_LEN)) {
 	r = make_raise_pack(E_PERM, "Cannot chmod logs", var_ref(arglist.v.list[1]));
 #endif
     } else if ((real_filename = file_resolve_path(pathspec)) == NULL) {
