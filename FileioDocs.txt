@@ -1,25 +1,25 @@
   File I/O
   Ken Fox, Andy Bakun, Todd Sundsted
 
-  This is the documentation for the File I/O (FIO) patch for the Lamb-
-  daMOO server.  FIO adds several administrator-only builtins for manip-
-  ulating files from inside the MOO.  Security is enforced by making
-  these builtins executable with wizard permissions only as well as only
-  allowing access to a directory under the current directory (the one
-  the server is running in).
+  This is the documentation for the File I/O (FIO) extension for the
+  LambdaMOO server.  FIO adds several administrator-only builtins for
+  manipulating files from inside the MOO.  Security is enforced by
+  making these builtins executable with wizard permissions only as well
+  as only allowing access to a directory under the current directory
+  (the one the server is running in).
 
   1.  Introduction
 
   1.1.  Purpose
 
-  This patch to the LambdaMOO server adds several new builtins that
+  This extension to the LambdaMOO server adds several new builtins that
   allow the manipulation of files from MOO code.   The new builtins are
   structured similarly to the stdio library for C.  This allows MOO-code
   to perform stream-oriented I/O to files.
 
   Granting MOO code direct access to files opens a hole in the otherwise
   fairly good wall that the LambdaMOO server puts up between the OS and
-  the database.  The patch contains the risk as much as possible by
+  the database.  The extension contains the risk as much as possible by
   restricting where files can be opened and allowing the new builtins to
   be called by wizard permissions only.  It is still possible execute
   various forms denial of service attacks, but the MOO server allows
@@ -54,34 +54,14 @@
 
   2.  Installation
 
-  Most of the new code for this patch are in the files extension-
-  fileio.c and extension-fileio.h.  These files contain the header and
-  implementation for all of the new builtin functions.  One line has to
-  be added to bf_register.h and a related line must be added
-  functions.c.
+  To enable this extension, you must edit options.h prior to compiling
+  and uncomment out the following line:
+         #define FILE_IO 1
 
-  The distribution archive should contain the text version of this
-  documentation (fileio-README), extension-fileio.c, extension-fileio.h,
-  and fileio.patch.
-
-  If you are going to use patch to install it, just copy fileio.patch
-  into the server directory and apply the patch:
-
-         patch < fileio.patch
-
-  It is recommended that you use patch to install it, but you can also
-  manually make the changes to the server source.  First, copy the
-  extension-fileio.c and .h files into a directory with the freshly
-  untarred server source.  Add extension-fileio.c to the CSRCS line of
-  Makefile.in, add
-
-          extern void register_fileio(void);
-
-  to bf_register.h and add
-
-         register_fileio
-
-  to the list of functions in functions.c.
+  You may also edit other detailed settings:
+    FILE_IO_MAX_FILES           the limit of files open
+    FILE_SUBDIR                 the File I/O jail directory
+    FILE_IO_BUFFER_LENGTH       the maximum line/data length
 
   Finally, make the files directory in the directory the MOO server is
   run in.  Only files in this directory will be accessible using this

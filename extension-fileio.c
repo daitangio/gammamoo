@@ -1,8 +1,10 @@
 /*
- * file i/o server modification
+ * File I/O extension
  */
 
-#define FILE_IO 1
+#include "options.h"
+
+#ifdef FILE_IO
 
 #include <stdio.h>
 
@@ -32,8 +34,6 @@
 
 #include "tasks.h"
 #include "log.h"
-
-#include "extension-fileio.h"
 
 /* apparently, not defined on some SysVish systems -- AAB 06/03/97 */
 typedef unsigned short umode_t;
@@ -1567,12 +1567,14 @@ bf_file_chmod(Var arglist, Byte next, void *vdata, Objid progr)
     return r;
 }
 
+#endif
+
 /************************************************************************/
 
 void
 register_fileio(void)
 {
-#if FILE_IO
+#ifdef FILE_IO
 
     register_function("file_version", 0, 0, bf_file_version);
 
