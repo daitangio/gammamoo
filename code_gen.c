@@ -23,8 +23,10 @@
 #include "program.h"
 #include "storage.h"
 #include "structures.h"
+#include "str_intern.h"
 #include "utils.h"
 #include "version.h"
+#include "my-stdlib.h"
 
 /*** The reader will likely find it useful to consult the file
  *** `MOOCodeSequences.txt' in this directory while reading the code in this
@@ -72,6 +74,11 @@ struct state {
     Fixup *fixups;
     unsigned num_bytes, max_bytes;
     Byte *bytes;
+#ifdef BYTECODE_REDUCE_REF
+    Byte *pushmap;
+    Byte *trymap;
+    unsigned try_depth;
+#endif				/* BYTECODE_REDUCE_REF */
     unsigned cur_stack, max_stack;
     unsigned saved_stack;
     unsigned num_loops, max_loops;
@@ -79,6 +86,21 @@ struct state {
     GState *gstate;
 };
 typedef struct state State;
+
+#ifdef BYTECODE_REDUCE_REF
+#define INCR_TRY_DEPTH(SSS)	(++(SSS)->try_depth)
+#define DECR_TRY_DEPTH(SSS)	(--(SSS)->try_depth)
+#define NON_VR_VAR_MASK	      ~((1 << SLOT_ARGSTR) | \
+				(1 << SLOT_DOBJ) | \
+				(1 << SLOT_DOBJSTR) | \
+				(1 << SLOT_PREPSTR) | \
+				(1 << SLOT_IOBJ) | \
+				(1 << SLOT_IOBJSTR) | \
+				(1 << SLOT_PLAYER))
+#else				/* no BYTECODE_REDUCE_REF */
+#define INCR_TRY_DEPTH(SSS)
+#define DECR_TRY_DEPTH(SSS)
+#endif				/* BYTECODE_REDUCE_REF */
 
 static void
 init_gstate(GState * gstate)
@@ -114,6 +136,11 @@ init_state(State * state, GState * gstate)
     state->num_bytes = 0;
     state->max_bytes = 50;
     state->bytes = mymalloc(sizeof(Byte) * state->max_bytes, M_BYTECODES);
+#ifdef BYTECODE_REDUCE_REF
+    state->pushmap = mymalloc(sizeof(Byte) * state->max_bytes, M_BYTECODES);
+    state->trymap = mymalloc(sizeof(Byte) * state->max_bytes, M_BYTECODES);
+    state->try_depth = 0;
+#endif				/* BYTECODE_REDUCE_REF */
 
     state->cur_stack = state->max_stack = 0;
     state->saved_stack = UINT_MAX;
@@ -130,6 +157,10 @@ free_state(State state)
 {
     myfree(state.fixups, M_CODE_GEN);
     myfree(state.bytes, M_BYTECODES);
+#ifdef BYTECODE_REDUCE_REF
+    myfree(state.pushmap, M_BYTECODES);
+    myfree(state.trymap, M_BYTECODES);
+#endif				/* BYTECODE_REDUCE_REF */
     myfree(state.loops, M_CODE_GEN);
 }
 
@@ -138,17 +169,20 @@ emit_byte(Byte b, State * state)
 {
     if (state->num_bytes == state->max_bytes) {
 	unsigned new_max = 2 * state->max_bytes;
-	Byte *new_bytes = mymalloc(sizeof(Byte) * new_max,
+	state->bytes = myrealloc(state->bytes, sizeof(Byte) * new_max,
+				 M_BYTECODES);
+#ifdef BYTECODE_REDUCE_REF
+	state->pushmap = myrealloc(state->pushmap, sizeof(Byte) * new_max,
 				   M_BYTECODES);
-	unsigned i;
-
-	for (i = 0; i < state->num_bytes; i++)
-	    new_bytes[i] = state->bytes[i];
-
-	myfree(state->bytes, M_BYTECODES);
-	state->bytes = new_bytes;
+	state->trymap = myrealloc(state->trymap, sizeof(Byte) * new_max,
+				  M_BYTECODES);
+#endif				/* BYTECODE_REDUCE_REF */
 	state->max_bytes = new_max;
     }
+#ifdef BYTECODE_REDUCE_REF
+    state->pushmap[state->num_bytes] = 0;
+    state->trymap[state->num_bytes] = state->try_depth;
+#endif				/* BYTECODE_REDUCE_REF */
     state->bytes[state->num_bytes++] = b;
 }
 
@@ -235,7 +269,16 @@ add_literal(Var v, State * state)
 	    gstate->literals = new_literals;
 	    gstate->max_literals = new_max;
 	}
-	gstate->literals[i = gstate->num_literals++] = var_ref(v);
+	if (v.type == TYPE_STR) {
+	    /* intern string if we can */
+	    Var nv;
+
+	    nv.type = TYPE_STR;
+	    nv.v.str = str_intern(v.v.str);
+	    gstate->literals[i = gstate->num_literals++] = nv;
+	} else {
+	    gstate->literals[i = gstate->num_literals++] = var_ref(v);
+	}
     }
     add_fixup(FIXUP_LITERAL, i, state);
     state->num_literals++;
@@ -306,6 +349,9 @@ add_pseudo_label(unsigned value, State * state)
     f.value = value;
     f.prev_literals = f.prev_forks = 0;
     f.prev_var_refs = f.prev_labels = 0;
+
+    f.prev_stacks = 0;
+
     f.next = -1;
 
     add_known_fixup(f, state);
@@ -332,6 +378,7 @@ capture_label(State * state)
     f.prev_forks = state->num_forks;
     f.prev_var_refs = state->num_var_refs;
     f.prev_labels = state->num_labels;
+    f.prev_stacks = state->num_stacks;
     f.next = -1;
 
     return f;
@@ -350,6 +397,7 @@ define_label(int label, State * state)
 	fixup->prev_forks = state->num_forks;
 	fixup->prev_var_refs = state->num_var_refs;
 	fixup->prev_labels = state->num_labels;
+	fixup->prev_stacks = state->num_stacks;
 	label = fixup->next;
     }
 }
@@ -431,13 +479,35 @@ exit_loop(State * state)
 
 
 static void
+emit_call_verb_op(Opcode op, State * state)
+{
+    emit_byte(op, state);
+#ifdef BYTECODE_REDUCE_REF
+    state->pushmap[state->num_bytes - 1] = OP_CALL_VERB;
+#endif				/* BYTECODE_REDUCE_REF */
+}
+
+static void
+emit_ending_op(Opcode op, State * state)
+{
+    emit_byte(op, state);
+#ifdef BYTECODE_REDUCE_REF
+    state->pushmap[state->num_bytes - 1] = OP_DONE;
+#endif				/* BYTECODE_REDUCE_REF */
+}
+
+static void
 emit_var_op(Opcode op, unsigned slot, State * state)
 {
     if (slot >= NUM_READY_VARS) {
 	emit_byte(op + NUM_READY_VARS, state);
 	add_var_ref(slot, state);
-    } else
+    } else {
 	emit_byte(op + slot, state);
+#ifdef BYTECODE_REDUCE_REF
+	state->pushmap[state->num_bytes - 1] = op;
+#endif				/* BYTECODE_REDUCE_REF */
+    }
 }
 
 static void generate_expr(Expr *, State *);
@@ -614,9 +684,6 @@ generate_expr(Expr * expr, State * state)
 	    case EXPR_PROP:
 		op = OP_GET_PROP;
 		break;
-	    case EXPR_INDEX:
-		op = OP_REF;
-		break;
 	    default:
 		panic("Not a binary operator in GENERATE_EXPR()");
 	    }
@@ -679,7 +746,7 @@ generate_expr(Expr * expr, State * state)
 	generate_expr(expr->e.verb.obj, state);
 	generate_expr(expr->e.verb.verb, state);
 	generate_arg_list(expr->e.verb.args, state);
-	emit_byte(OP_CALL_VERB, state);
+	emit_call_verb_op(OP_CALL_VERB, state);
 	pop_stack(2, state);
 	break;
     case EXPR_COND:
@@ -791,7 +858,9 @@ generate_expr(Expr * expr, State * state)
 	    push_stack(1, state);
 	    emit_extended_byte(EOP_CATCH, state);
 	    push_stack(1, state);
+	    INCR_TRY_DEPTH(state);
 	    generate_expr(expr->e.expr, state);
+	    DECR_TRY_DEPTH(state);
 	    emit_extended_byte(EOP_END_CATCH, state);
 	    end_label = add_label(state);
 	    pop_stack(3, state);	/* codes, label, catch */
@@ -935,10 +1004,10 @@ generate_stmt(Stmt * stmt, State * state)
 	case STMT_RETURN:
 	    if (stmt->s.expr) {
 		generate_expr(stmt->s.expr, state);
-		emit_byte(OP_RETURN, state);
+		emit_ending_op(OP_RETURN, state);
 		pop_stack(1, state);
 	    } else
-		emit_byte(OP_RETURN0, state);
+		emit_ending_op(OP_RETURN0, state);
 	    break;
 	case STMT_TRY_EXCEPT:
 	    {
@@ -955,7 +1024,9 @@ generate_stmt(Stmt * stmt, State * state)
 		emit_extended_byte(EOP_TRY_EXCEPT, state);
 		emit_byte(arm_count, state);
 		push_stack(1, state);
+		INCR_TRY_DEPTH(state);
 		generate_stmt(stmt->s.catch.body, state);
+		DECR_TRY_DEPTH(state);
 		emit_extended_byte(EOP_END_EXCEPT, state);
 		end_label = add_label(state);
 		pop_stack(2 * arm_count + 1, state);	/* 2(codes,pc) + catch */
@@ -982,7 +1053,9 @@ generate_stmt(Stmt * stmt, State * state)
 		emit_extended_byte(EOP_TRY_FINALLY, state);
 		handler_label = add_label(state);
 		push_stack(1, state);
+		INCR_TRY_DEPTH(state);
 		generate_stmt(stmt->s.finally.body, state);
+		DECR_TRY_DEPTH(state);
 		emit_extended_byte(EOP_END_FINALLY, state);
 		pop_stack(1, state);	/* FINALLY marker */
 		define_label(handler_label, state);
@@ -1048,18 +1121,33 @@ ref_size(unsigned max)
 	return 4;
 }
 
+#ifdef BYTECODE_REDUCE_REF
+static int
+bbd_cmp(int *a, int *b)
+{
+    return *a - *b;
+}
+#endif				/* BYTECODE_REDUCE_REF */
+
 static Bytecodes
 stmt_to_code(Stmt * stmt, GState * gstate)
 {
     State state;
     Bytecodes bc;
-    unsigned old_i, new_i, fix_i;
+    int old_i, new_i, fix_i;
+#ifdef BYTECODE_REDUCE_REF
+    int *bbd, n_bbd;		/* basic block delimiters */
+    unsigned varbits;		/* variables we've seen */
+#if NUM_READY_VARS > 32
+#error assumed NUM_READY_VARS was 32
+#endif
+#endif				/* BYTECODE_REDUCE_REF */
     Fixup *fixup;
 
     init_state(&state, gstate);
 
     generate_stmt(stmt, &state);
-    emit_byte(OP_DONE, &state);
+    emit_ending_op(OP_DONE, &state);
 
     if (state.cur_stack != 0)
 	panic("Stack not entirely popped in STMT_TO_CODE()");
@@ -1095,9 +1183,76 @@ stmt_to_code(Stmt * stmt, GState * gstate)
 
     bc.vector = mymalloc(sizeof(Byte) * bc.size, M_BYTECODES);
 
+#ifdef BYTECODE_REDUCE_REF
+    /*
+     * Create a sorted array filled with the bytecode offsets of
+     * beginnings of each basic block of code.  These are sequences
+     * of bytecodes which are guaranteed to execute in order (so if
+     * you start at the top, you will reach the bottom).  As such they
+     * are delimited by conditional and unconditional jump operations,
+     * each of which has an associated fixup.  If you also want to
+     * limit the blocks to those which have the property "if you get to
+     * the bottom you had to have started at the top", include the
+     * *destinations* of the jumps (hence the qsort).
+     */
+    bbd = mymalloc(sizeof(*bbd) * (state.num_fixups + 2), M_CODE_GEN);
+    n_bbd = 0;
+    bbd[n_bbd++] = 0;
+    bbd[n_bbd++] = state.num_bytes;
+    for (fixup = state.fixups, fix_i = 0; fix_i < state.num_fixups; ++fix_i, ++fixup)
+	if (fixup->kind == FIXUP_LABEL || fixup->kind == FIXUP_FORK)
+	    bbd[n_bbd++] = fixup->pc;
+    qsort(bbd, n_bbd, sizeof(*bbd), bbd_cmp);
+
+    /*
+     * For every basic block, search backwards for PUT ops.  The first
+     * PUSH we find for each variable slot (looking backwards, remember)
+     * after each PUT becomes a PUSH_CLEAR, while the rest remain PUSHs.
+     * In other words, the last use of a variable before it is replaced
+     * is identified, so that during interpretation the code can avoid
+     * holding spurious references to it.
+     */
+    while (n_bbd-- > 1) {
+	varbits = 0;
+
+	for (old_i = bbd[n_bbd] - 1; old_i >= bbd[n_bbd - 1]; --old_i) {
+	    if (state.pushmap[old_i] == OP_PUSH) {
+		int id = PUSH_n_INDEX(state.bytes[old_i]);
+
+		if (varbits & (1 << id)) {
+		    varbits &= ~(1 << id);
+		    state.bytes[old_i] += OP_PUSH_CLEAR - OP_PUSH;
+		}
+	    } else if (state.trymap[old_i] > 0) {
+		/*
+		 * Operations inside of exception handling blocks might not
+		 * execute, so they can't set any bits.
+		 */ ;
+	    } else if (state.pushmap[old_i] == OP_PUT) {
+		int id = PUT_n_INDEX(state.bytes[old_i]);
+		varbits |= 1 << id;
+	    } else if (state.pushmap[old_i] == OP_DONE) {
+		/*
+		 * If the verb ends, all variables are unneeded.  This
+		 * means things like `return pass(@args)' will not hold
+		 * a ref to `args' during the called verb.
+		 */
+		varbits = ~0U;
+	    } else if (state.pushmap[old_i] == OP_CALL_VERB) {
+		/*
+		 * Verb calls implicitly pass the VR variables (dobj,
+		 * dobjstr, player, etc).  They can't be clear at the
+		 * time of a verbcall.
+		 */
+		varbits &= NON_VR_VAR_MASK;
+	    }
+	}
+    }
+    myfree(bbd, M_CODE_GEN);
+#endif				/* BYTECODE_REDUCE_REF */
+
     fixup = state.fixups;
     fix_i = 0;
-
     for (old_i = new_i = 0; old_i < state.num_bytes; old_i++) {
 	if (fix_i < state.num_fixups && fixup->pc == old_i) {
 	    unsigned value, size = 0;	/* initialized to silence warning */
@@ -1197,10 +1352,57 @@ generate_code(Stmt * stmt, DB_Version version)
 
 char rcsid_code_gen[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:18:24  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.11  2002/09/15 23:21:01  xplat
+ * GNU indent normalization.
+ *
+ * Revision 1.10  2002/08/23 13:00:18  bjj
+ * Removed a spurious EXPR_INDEX case left over from before x[$]
+ *
+ * Revision 1.9  1999/08/14 19:44:15  bjj
+ * Code generator will no longer PUSH_CLEAR things like dobj/dobjstr/prepstr
+ * around CALL_VERB operations, since those variables are passed directly
+ * from one environment to the next.
+ *
+ * Revision 1.8  1999/08/12 05:40:09  bjj
+ * Consider OP_FORK a nonlocal goto so that no variables are undefined
+ * when it happens (the saved environment has to be complete for the forked
+ * task).
+ *
+ * Revision 1.7  1999/08/11 07:51:03  bjj
+ * Fix problem with last checkin which prevented compiling without B_R_R, duh.
+ *
+ * Revision 1.6  1999/07/15 01:34:11  bjj
+ * Bug fixes to v1.2.2.2, BYTECODE_REDUCE_REF.  Code analysis now takes
+ * into account what opcodes are running under try/catch protection and
+ * prevents them from becoming PUSH_CLEAR operations which may result
+ * in spurious undefined variable errors.
+ *
+ * Revision 1.5  1998/12/14 13:17:30  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.4  1998/02/19 07:36:16  nop
+ * Initial string interning during db load.
+ *
+ * Revision 1.2.2.2  1997/09/09 07:01:16  bjj
+ * Change bytecode generation so that x=f(x) calls f() without holding a ref
+ * to the value of x in the variable slot.  See the options.h comment for
+ * BYTECODE_REDUCE_REF for more details.
+ *
+ * This checkin also makes x[y]=z (OP_INDEXSET) take advantage of that (that
+ * new code is not conditional and still works either way).
+ *
+ * Revision 1.3  1997/07/07 03:24:53  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ *
+ * Revision 1.2.2.1  1997/05/29 15:50:01  nop
+ * Make sure to clear prev_stacks to avoid referring to uninitialized memory
+ * later.  (Usually multiplied by zero, so only a problem in weird circumstances.)
+ *
+ * Revision 1.2  1997/03/03 04:18:24  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:44:59  nop
  * LambdaMOO 1.8.0p5
  *

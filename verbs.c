@@ -77,7 +77,7 @@ validate_verb_info(Var v, Objid * owner, unsigned *flags, const char **names)
 {
     const char *s;
 
-    if (!(v.type = TYPE_LIST
+    if (!(v.type == TYPE_LIST
 	  && v.v.list[0].v.num == 3
 	  && v.v.list[1].type == TYPE_OBJ
 	  && v.v.list[2].type == TYPE_STR
@@ -155,7 +155,7 @@ static enum error
 validate_verb_args(Var v, db_arg_spec * dobj, db_prep_spec * prep,
 		   db_arg_spec * iobj)
 {
-    if (!(v.type = TYPE_LIST
+    if (!(v.type == TYPE_LIST
 	  && v.v.list[0].v.num == 3
 	  && v.v.list[1].type == TYPE_STR
 	  && v.v.list[2].type == TYPE_STR
@@ -176,6 +176,7 @@ bf_add_verb(Var arglist, Byte next, void *vdata, Objid progr)
     Objid oid = arglist.v.list[1].v.obj;
     Var info = arglist.v.list[2];
     Var args = arglist.v.list[3];
+    Var result;
     Objid owner;
     unsigned flags;
     const char *names;
@@ -183,7 +184,8 @@ bf_add_verb(Var arglist, Byte next, void *vdata, Objid progr)
     db_prep_spec prep;
     enum error e;
 
-    if ((e = validate_verb_info(info, &owner, &flags, &names)) != E_NONE);	/* Already failed */
+    if ((e = validate_verb_info(info, &owner, &flags, &names)) != E_NONE)
+	/* Already failed */ ;
     else if ((e = validate_verb_args(args, &dobj, &prep, &iobj)) != E_NONE)
 	free_str(names);
     else if (!valid(oid)) {
@@ -193,12 +195,14 @@ bf_add_verb(Var arglist, Byte next, void *vdata, Objid progr)
 	       || (progr != owner && !is_wizard(progr))) {
 	free_str(names);
 	e = E_PERM;
-    } else
-	db_add_verb(oid, names, owner, flags, dobj, prep, iobj);
+    } else {
+	result.type = TYPE_INT;
+	result.v.num = db_add_verb(oid, names, owner, flags, dobj, prep, iobj);
+    }
 
     free_var(arglist);
     if (e == E_NONE)
-	return no_var_pack();
+	return make_var_pack(result);
     else
 	return make_error_pack(e);
 }
@@ -577,10 +581,19 @@ register_verbs(void)
 
 char rcsid_verbs[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:19:37  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.4  2001/01/29 08:38:44  bjj
+ * Fix Sourceforge Bug #127620: add_verb() should return verbindex
+ * And now it does.  Old servers always returned 0, new servers will always
+ * return a positive integer.
+ *
+ * Revision 1.3  1998/12/14 13:19:16  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.2  1997/03/03 04:19:37  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:01  nop
  * LambdaMOO 1.8.0p5
  *

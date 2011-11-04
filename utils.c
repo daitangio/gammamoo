@@ -60,9 +60,12 @@ static const char cmap[] =
 int
 mystrcasecmp(const char *ss, const char *tt)
 {
-    const unsigned char *s = (const unsigned char *) ss;
-    const unsigned char *t = (const unsigned char *) tt;
+    register const unsigned char *s = (const unsigned char *) ss;
+    register const unsigned char *t = (const unsigned char *) tt;
 
+    if (s == t) {
+	return 0;
+    }
     while (cmap[*s] == cmap[*t++]) {
 	if (!*s++)
 	    return 0;
@@ -76,7 +79,7 @@ mystrncasecmp(const char *ss, const char *tt, int n)
     const unsigned char *s = (const unsigned char *) ss;
     const unsigned char *t = (const unsigned char *) tt;
 
-    if (!n)
+    if (!n || ss == tt)
 	return 0;
     while (cmap[*s] == cmap[*t++]) {
 	if (!*s++ || !--n)
@@ -94,6 +97,9 @@ verbcasecmp(const char *verb, const char *word)
 	none, inner, end
     } star;
 
+    if (verb == word) {
+	return 1;
+    }
     while (*v) {
 	w = (const unsigned char *) word;
 	star = none;
@@ -121,19 +127,16 @@ verbcasecmp(const char *verb, const char *word)
 unsigned
 str_hash(const char *s)
 {
-    unsigned ans = 0;
-    int i, len = strlen(s), offset = 0;
+    register unsigned ans = 0;
 
-    for (i = 0; i < len; i++) {
-	ans = ans ^ (cmap[(unsigned char) s[i]] << offset++);
-	if (offset == 25)
-	    offset = 0;
+    while (*s) {
+	ans = (ans << 3) + (ans >> 28) + cmap[(unsigned char) *s++];
     }
     return ans;
 }
 
 void
-free_var(Var v)
+complex_free_var(Var v)
 {
     int i;
 
@@ -144,8 +147,10 @@ free_var(Var v)
 	break;
     case TYPE_LIST:
 	if (delref(v.v.list) == 0) {
-	    for (i = 1; i <= v.v.list[0].v.num; i++)
-		free_var(v.v.list[i]);
+	    Var *pv;
+
+	    for (i = v.v.list[0].v.num, pv = v.v.list + 1; i > 0; i--, pv++)
+		free_var(*pv);
 	    myfree(v.v.list, M_LIST);
 	}
 	break;
@@ -153,22 +158,11 @@ free_var(Var v)
 	if (delref(v.v.fnum) == 0)
 	    myfree(v.v.fnum, M_FLOAT);
 	break;
-    case TYPE_INT:
-    case TYPE_OBJ:
-    case TYPE_ERR:
-    case TYPE_CLEAR:
-    case TYPE_NONE:
-    case TYPE_CATCH:
-    case TYPE_FINALLY:
-	break;
-    default:
-	panic("FREE_VAR: Unknown value type");
-	break;
     }
 }
 
 Var
-var_ref(Var v)
+complex_var_ref(Var v)
 {
     switch ((int) v.type) {
     case TYPE_STR:
@@ -180,22 +174,12 @@ var_ref(Var v)
     case TYPE_FLOAT:
 	addref(v.v.fnum);
 	break;
-    case TYPE_INT:
-    case TYPE_OBJ:
-    case TYPE_ERR:
-    case TYPE_CLEAR:
-    case TYPE_NONE:
-    case TYPE_CATCH:
-    case TYPE_FINALLY:
-	break;
-    default:
-	panic("VAR_REF: Unknown value type");
     }
     return v;
 }
 
 Var
-var_dup(Var v)
+complex_var_dup(Var v)
 {
     int i;
     Var newlist;
@@ -214,17 +198,28 @@ var_dup(Var v)
     case TYPE_FLOAT:
 	v = new_float(*v.v.fnum);
 	break;
-    case TYPE_INT:
-    case TYPE_OBJ:
-    case TYPE_ERR:
-    case TYPE_NONE:
-    case TYPE_CATCH:
-    case TYPE_FINALLY:
-	break;
-    default:
-	panic("VAR_DUP: Unknown value type");
     }
     return v;
+}
+
+/* could be inlined and use complex_etc like the others, but this should
+ * usually be called in a context where we already konw the type.
+ */
+int
+var_refcount(Var v)
+{
+    switch ((int) v.type) {
+    case TYPE_STR:
+	return refcount(v.v.str);
+	break;
+    case TYPE_LIST:
+	return refcount(v.v.list);
+	break;
+    case TYPE_FLOAT:
+	return refcount(v.v.fnum);
+	break;
+    }
+    return 1;
 }
 
 int
@@ -262,6 +257,9 @@ equality(Var lhs, Var rhs, int case_matters)
 	    else {
 		int i;
 
+		if (lhs.v.list == rhs.v.list) {
+		    return 1;
+		}
 		for (i = 1; i <= lhs.v.list[0].v.num; i++) {
 		    if (!equality(lhs.v.list[i], rhs.v.list[i], case_matters))
 			return 0;
@@ -366,7 +364,7 @@ value_bytes(Var v)
 
     switch (v.type) {
     case TYPE_STR:
-	size += strlen(v.v.str) + 1;
+	size += memo_strlen(v.v.str) + 1;
 	break;
     case TYPE_FLOAT:
 	size += sizeof(double);
@@ -443,10 +441,43 @@ binary_to_raw_bytes(const char *binary, int *buflen)
 
 char rcsid_utils[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:19:36  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.8  2006/09/07 00:55:02  bjj
+ * Add new MEMO_STRLEN option which uses the refcounting mechanism to
+ * store strlen with strings.  This is basically free, since most string
+ * allocations are rounded up by malloc anyway.  This saves lots of cycles
+ * computing strlen.  (The change is originally from jitmoo, where I wanted
+ * inline range checks for string ops).
+ *
+ * Revision 1.7  2002/08/18 09:47:26  bjj
+ * Finally made free_activation() take a pointer after noticing how !$%^&
+ * much time it was taking in a particular profiling run.
+ *
+ * Revision 1.5  1999/08/09 02:36:33  nop
+ * Shortcut various equality tests if we have pointer equality.
+ *
+ * Revision 1.4  1998/12/14 13:19:14  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3  1997/07/07 03:24:55  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ * 
+ * Revision 1.2.2.3  1997/03/21 15:11:22  bjj
+ * add var_refcount interface
+ *
+ * Revision 1.2.2.2  1997/03/21 14:29:03  bjj
+ * Some code bumming in complex_free_var (3rd most expensive function!)
+ *
+ * Revision 1.2.2.1  1997/03/20 18:07:48  bjj
+ * Add a flag to the in-memory type identifier so that inlines can cheaply
+ * identify Vars that need actual work done to ref/free/dup them.  Add the
+ * appropriate inlines to utils.h and replace old functions in utils.c with
+ * complex_* functions which only handle the types with external storage.
+ *
+ * Revision 1.2  1997/03/03 04:19:36  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:01  nop
  * LambdaMOO 1.8.0p5
  *

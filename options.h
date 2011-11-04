@@ -53,6 +53,17 @@
 #define OUT_OF_BAND_PREFIX "#$#"
 
 /******************************************************************************
+ * If OUT_OF_BAND_QUOTE_PREFIX is defined as a non-empty string, then any
+ * lines of input from any player that begin with that prefix will be
+ * stripped of that prefix and processed normally (whether to be parsed a
+ * command or given to a pending read()ing task), even if the resulting line
+ * begins with OUT_OF_BAND_PREFIX.  This provides a means of quoting lines
+ * that would otherwise spawn #0:do_out_of_band_command tasks
+ */
+
+#define OUT_OF_BAND_QUOTE_PREFIX "#$\""
+
+/******************************************************************************
  * The following constants define the execution limits placed on all MOO tasks.
  *
  * DEFAULT_MAX_STACK_DEPTH is the default maximum depth allowed for the MOO
@@ -143,19 +154,31 @@
 /* #define MPLEX_STYLE MP_POLL */
 
 /******************************************************************************
- * Define OUTBOUND_NETWORK to enable the built-in MOO function
- * open_network_connection(), which allows (only) wizard-owned MOO code to make
- * outbound network connections from the server.
+ * The built-in MOO function open_network_connection(), when enabled,
+ * allows (only) wizard-owned MOO code to make outbound network connections
+ * from the server.  When disabled, it raises E_PERM whenever called.
+ *
+ * The +O and -O command line options can explicitly enable and disable this
+ * function.  If neither option is supplied, the definition given to
+ * OUTBOUND_NETWORK here determines the default behavior
+ * (use 0 to disable by default, 1 or blank to enable by default).
+ * 
+ * If OUTBOUND_NETWORK is not defined at all,
+ * open_network_connection() is permanently disabled and +O is ignored.
+ *
  * *** THINK VERY HARD BEFORE ENABLING THIS FUNCTION ***
- * In some contexts, this could represent a serious breach of security.  By
- * default, the open_network_connection() function is disabled, always raising
- * E_PERM when called.
+ * In some contexts, this could represent a serious breach of security.  
  *
  * Note: OUTBOUND_NETWORK may not be defined if NETWORK_PROTOCOL is either
  *	 NP_SINGLE or NP_LOCAL.
  */
 
-/* #define OUTBOUND_NETWORK */
+/* disable by default, +O enables: */
+/* #define OUTBOUND_NETWORK 0 */
+
+/* enable by default, -O disables: */
+/* #define OUTBOUND_NETWORK 1 */
+
 
 /******************************************************************************
  * The following constants define certain aspects of the server's network
@@ -179,7 +202,7 @@
  *			   accepted by a given listener L.
  */
 
-#define MAX_QUEUED_OUTPUT	16384
+#define MAX_QUEUED_OUTPUT	65536
 #define MAX_QUEUED_INPUT	MAX_QUEUED_OUTPUT
 #define DEFAULT_CONNECT_TIMEOUT	300
 
@@ -206,6 +229,15 @@
 #define FILE_IO_BUFFER_LENGTH 4096
 
 /******************************************************************************
+ * On connections that have not been set to binary mode, the server normally
+ * discards incoming characters that are not printable ASCII, including
+ * backspace (8) and delete(127).  If INPUT_APPLY_BACKSPACE is defined,
+ * backspace and delete cause the preceding character (if any) to be removed
+ * from the input stream.  (Comment this out to restore pre-1.8.3 behavior)
+ */
+#define INPUT_APPLY_BACKSPACE
+
+/******************************************************************************
  * The server maintains a cache of the most recently used patterns from calls
  * to the match() and rmatch() built-in functions.  PATTERN_CACHE_SIZE controls
  * how many past patterns are remembered by the server.  Do not set it to a
@@ -223,6 +255,61 @@
  */
 
 #define IGNORE_PROP_PROTECTED
+
+/******************************************************************************
+ * The code generator can now recognize situations where the code will not
+ * refer to the value of a variable again and generate opcodes that will
+ * keep the interpreter from holding references to the value in the runtime
+ * environment variable slot.  Before, when doing something like x=f(x), the
+ * interpreter was guaranteed to have a reference to the value of x while f()
+ * was running, meaning that f() always had to copy x to modify it.  With
+ * BYTECODE_REDUCE_REF enabled, f() could be called with the last reference
+ * to the value of x.  So for example, x={@x,y} can (if there are no other
+ * references to the value of x in variables or properties) just append to
+ * x rather than make a copy and append to that.  If it *does* have to copy,
+ * the next time (if it's in a loop) it will have the only reference to the
+ * copy and then it can take advantage.
+ *
+ * NOTE WELL    NOTE WELL    NOTE WELL    NOTE WELL    NOTE WELL    
+ *
+ * This option affects the length of certain bytecode sequences.
+ * Suspended tasks in a database from a server built with this option
+ * are not guaranteed to work with a server built without this option,
+ * and vice versa.  It is safe to flip this switch only if there are
+ * no suspended tasks in the database you are loading.  (It might work
+ * anyway, but hey, it's your database.)  This restriction will be
+ * lifted in a future version of the server software.  Consider this
+ * option as being BETA QUALITY until then.
+ *
+ * NOTE WELL    NOTE WELL    NOTE WELL    NOTE WELL    NOTE WELL    
+ *
+ ******************************************************************************
+ */
+/* #define BYTECODE_REDUCE_REF */
+
+#ifdef BYTECODE_REDUCE_REF
+#error Think carefully before enabling BYTECODE_REDUCE_REF.  This feature is still beta.  Comment out this line if you are sure.
+#endif
+
+/******************************************************************************
+ * The server can merge duplicate strings on load to conserve memory.  This
+ * involves a rather expensive step at startup to dispose of the table used
+ * to find the duplicates.  This should be improved eventually, but you may
+ * want to trade off faster startup time for increased memory usage.
+ *
+ * You might want to turn this off if you see a large delay before the
+ * INTERN: lines in the log at startup.
+ ******************************************************************************
+ */
+
+#define STRING_INTERNING /* */
+
+/******************************************************************************
+ * Store the length of the string WITH the string rather than recomputing
+ * it each time it is needed.
+ ******************************************************************************
+ */
+/* #define MEMO_STRLEN */
 
 /******************************************************************************
  * This package comes with a copy of the implementation of malloc() from GNU
@@ -250,6 +337,9 @@
 
 #ifndef OUT_OF_BAND_PREFIX
 #define OUT_OF_BAND_PREFIX ""
+#endif
+#ifndef OUT_OF_BAND_QUOTE_PREFIX
+#define OUT_OF_BAND_QUOTE_PREFIX ""
 #endif
 
 #if PATTERN_CACHE_SIZE < 1
@@ -305,6 +395,14 @@
 #  error You cannot define "OUTBOUND_NETWORK" with that "NETWORK_PROTOCOL"
 #endif
 
+/* make sure OUTBOUND_NETWORK has a value;
+   for backward compatibility, use 1 if none given */
+#if defined(OUTBOUND_NETWORK) && (( 0 * OUTBOUND_NETWORK - 1 ) == 0)
+#undef OUTBOUND_NETWORK
+#define OUTBOUND_NETWORK 1
+#endif
+
+
 #if NETWORK_PROTOCOL != NP_LOCAL && NETWORK_PROTOCOL != NP_SINGLE && NETWORK_PROTOCOL != NP_TCP
 #  error Illegal value for "NETWORK_PROTOCOL"
 #endif
@@ -322,11 +420,57 @@
 
 #endif				/* !Options_h */
 
-/* $Log$
-/* Revision 1.3  1997/03/03 06:14:45  nop
-/* Nobody actually uses protected properties.  Make IGNORE_PROP_PROTECTED
-/* the default.
-/*
+/* 
+ * $Log$
+ * Revision 1.11  2006/12/06 23:57:51  wrog
+ * New INPUT_APPLY_BACKSPACE option to process backspace/delete characters on nonbinary connections (patch 1571939)
+ *
+ * Revision 1.10  2006/09/07 00:55:02  bjj
+ * Add new MEMO_STRLEN option which uses the refcounting mechanism to
+ * store strlen with strings.  This is basically free, since most string
+ * allocations are rounded up by malloc anyway.  This saves lots of cycles
+ * computing strlen.  (The change is originally from jitmoo, where I wanted
+ * inline range checks for string ops).
+ *
+ * Revision 1.9  2004/05/22 01:25:44  wrog
+ * merging in WROGUE changes (W_SRCIP, W_STARTUP, W_OOB)
+ *
+ * Revision 1.8.10.3  2004/05/21 00:02:59  wrog
+ * allow for OUT_OF_BAND_QUOTE_PREFIX being undefined
+ *
+ * Revision 1.8.10.2  2003/06/11 10:36:45  wrog
+ * added OUT_OF_BAND_QUOTE_PREFIX
+ *
+ * Revision 1.8.10.1  2003/06/01 12:42:30  wrog
+ * added cmdline options -a (source address) +O/-O (enable/disable outbound network)
+ *
+ * Revision 1.8  2001/01/29 09:08:40  bjj
+ * Made STRING_INTERNING optional via options.h.
+ *
+ * Revision 1.7  2000/01/11 02:05:27  nop
+ * More doc tweaking, really warn about BYTECODE_REDUCE_REF.
+ *
+ * Revision 1.6  2000/01/09 22:20:15  nop
+ * Round one of doc cleanup.
+ *
+ * Revision 1.5  1999/08/09 04:09:54  nop
+ * Turn up the buffer sizes a notch.  They're still really too small...
+ *
+ * Revision 1.4  1998/12/14 13:18:41  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3.2.1  1997/09/09 07:01:17  bjj
+ * Change bytecode generation so that x=f(x) calls f() without holding a ref
+ * to the value of x in the variable slot.  See the options.h comment for
+ * BYTECODE_REDUCE_REF for more details.
+ *
+ * This checkin also makes x[y]=z (OP_INDEXSET) take advantage of that (that
+ * new code is not conditional and still works either way).
+ *
+ * Revision 1.3  1997/03/03 06:14:45  nop
+ * Nobody actually uses protected properties.  Make IGNORE_PROP_PROTECTED
+ * the default.
+ *
  * Revision 1.2  1997/03/03 04:19:13  nop
  * GNU Indent normalization
  *

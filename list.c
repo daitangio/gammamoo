@@ -108,8 +108,15 @@ doinsert(Var list, Var value, int pos)
 {
     Var new;
     int i;
+    int size = list.v.list[0].v.num + 1;
 
-    new = new_list(list.v.list[0].v.num + 1);
+    if (var_refcount(list) == 1 && pos == size) {
+	list.v.list = (Var *) myrealloc(list.v.list, (size + 1) * sizeof(Var), M_LIST);
+	list.v.list[0].v.num = size;
+	list.v.list[pos] = value;
+	return list;
+    }
+    new = new_list(size);
     for (i = 1; i < pos; i++)
 	new.v.list[i] = var_ref(list.v.list[i]);
     new.v.list[pos] = value;
@@ -336,8 +343,8 @@ strrangeset(Var base, int from, int to, Var value)
 {
     /* base and value are free'd */
     int index, offset = 0;
-    int val_len = strlen(value.v.str);
-    int base_len = strlen(base.v.str);
+    int val_len = memo_strlen(value.v.str);
+    int base_len = memo_strlen(base.v.str);
     int lenleft = (from > 1) ? from - 1 : 0;
     int lenmiddle = val_len;
     int lenright = (base_len > to) ? base_len - to : 0;
@@ -409,7 +416,7 @@ bf_length(Var arglist, Byte next, void *vdata, Objid progr)
 	break;
     case TYPE_STR:
 	r.type = TYPE_INT;
-	r.v.num = strlen(arglist.v.list[1].v.str);
+	r.v.num = memo_strlen(arglist.v.list[1].v.str);
 	break;
     default:
 	free_var(arglist);
@@ -553,20 +560,24 @@ bf_crypt(Var arglist, Byte next, void *vdata, Objid progr)
 
 #if HAVE_CRYPT
     char salt[3];
+    const char *saltp;
     static char saltstuff[] =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./";
     extern const char *crypt(const char *, const char *);
 
-    if (arglist.v.list[0].v.num == 1 || strlen(arglist.v.list[2].v.str) < 2) {
+    if (arglist.v.list[0].v.num == 1 || memo_strlen(arglist.v.list[2].v.str) < 2) {
+	/* provide a random 2-letter salt, works with old and new crypts */
 	salt[0] = saltstuff[RANDOM() % (int) strlen(saltstuff)];
 	salt[1] = saltstuff[RANDOM() % (int) strlen(saltstuff)];
+	salt[2] = '\0';
+	saltp = salt;
     } else {
-	salt[0] = arglist.v.list[2].v.str[0];
-	salt[1] = arglist.v.list[2].v.str[1];
+	/* return the entire crypted password in the salt, this works
+	 * for all crypt versions */
+	saltp = arglist.v.list[2].v.str;
     }
-    salt[2] = '\0';
     r.type = TYPE_STR;
-    r.v.str = str_dup(crypt(arglist.v.list[1].v.str, salt));
+    r.v.str = str_dup(crypt(arglist.v.list[1].v.str, saltp));
 #else				/* !HAVE_CRYPT */
     r.type = TYPE_STR;
     r.v.str = str_ref(arglist.v.list[1].v.str);
@@ -697,6 +708,7 @@ get_pattern(const char *string, int case_matters)
 		free_pattern(entry->pattern);
 	    }
 	    entry->pattern = new_pattern(string, case_matters);
+	    entry->case_matters = case_matters;
 	    if (!entry->pattern.ptr)
 		entry->string = 0;
 	    else
@@ -813,7 +825,7 @@ check_subs_list(Var subs)
 	|| subs.v.list[4].type != TYPE_STR)
 	return 1;
     subj = subs.v.list[4].v.str;
-    subj_length = strlen(subj);
+    subj_length = memo_strlen(subj);
     if (invalid_pair(subs.v.list[1].v.num, subs.v.list[2].v.num,
 		     subj_length))
 	return 1;
@@ -843,7 +855,7 @@ bf_substitute(Var arglist, Byte next, void *vdata, Objid progr)
     char c = '\0';
 
     template = arglist.v.list[1].v.str;
-    template_length = strlen(template);
+    template_length = memo_strlen(template);
     subs = arglist.v.list[2];
 
     if (check_subs_list(subs)) {
@@ -851,7 +863,7 @@ bf_substitute(Var arglist, Byte next, void *vdata, Objid progr)
 	return make_error_pack(E_INVARG);
     }
     subject = subs.v.list[4].v.str;
-    subject_length = strlen(subject);
+    subject_length = memo_strlen(subject);
 
     s = new_stream(template_length);
     ans.type = TYPE_STR;
@@ -952,7 +964,7 @@ bf_string_hash(Var arglist, Byte next, void *vdata, Objid progr)
     const char *str = arglist.v.list[1].v.str;
 
     r.type = TYPE_STR;
-    r.v.str = hash_bytes(str, strlen(str));
+    r.v.str = hash_bytes(str, memo_strlen(str));
     free_var(arglist);
     return make_var_pack(r);
 }
@@ -964,7 +976,7 @@ bf_value_hash(Var arglist, Byte next, void *vdata, Objid progr)
     const char *lit = value_to_literal(arglist.v.list[1]);
 
     r.type = TYPE_STR;
-    r.v.str = hash_bytes(lit, strlen(lit));
+    r.v.str = hash_bytes(lit, memo_strlen(lit));
     free_var(arglist);
     return make_var_pack(r);
 }
@@ -987,7 +999,7 @@ bf_decode_binary(Var arglist, Byte next, void *vdata, Objid progr)
 	r = new_list(length);
 	for (i = 1; i <= length; i++) {
 	    r.v.list[i].type = TYPE_INT;
-	    r.v.list[i].v.num = bytes[i - 1];
+	    r.v.list[i].v.num = (unsigned char) bytes[i - 1];
 	}
     } else {
 	static Stream *s = 0;
@@ -1129,10 +1141,44 @@ register_list(void)
 
 char rcsid_list[] = "$Id$";
 
-/* $Log$
-/* Revision 1.3  1997/03/03 06:20:04  bjj
-/* new_list(0) now returns the same empty list to every caller
-/*
+/* 
+ * $Log$
+ * Revision 1.7  2006/09/07 00:55:02  bjj
+ * Add new MEMO_STRLEN option which uses the refcounting mechanism to
+ * store strlen with strings.  This is basically free, since most string
+ * allocations are rounded up by malloc anyway.  This saves lots of cycles
+ * computing strlen.  (The change is originally from jitmoo, where I wanted
+ * inline range checks for string ops).
+ *
+ * Revision 1.6  2001/03/12 00:16:29  bjj
+ * bf_crypt now passes the entire second argument as the salt to
+ * the C crypt() routine.  This works fine for traditional DES crypts
+ * and supports modern modular crypts like FreeBSD's.  This just makes
+ * it possible to pass the entire salt:  the core still has to do it.
+ *
+ * Revision 1.5  1998/12/14 13:17:57  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.4  1997/07/07 03:24:54  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ * 
+ * Revision 1.3.2.3  1997/07/03 08:04:01  bjj
+ * Pattern cache was not storing case_matters flag, causing many patterns to
+ * be impossible to find in the cache.
+ *
+ * Revision 1.3.2.2  1997/05/20 14:55:52  nop
+ * Include Jason's patch for bf_decode_binary losing on systems where
+ * char is signed.
+ *
+ * Revision 1.3.2.1  1997/03/21 15:22:56  bjj
+ * doinsert reallocs for appending to refcnt 1 lists.  note that this wins
+ * because it avoids all the var_ref/free_var that's done in the general case,
+ * not because it avoids malloc/free.  the general case could also benefit from
+ * using memcpy when the refcnt is 1, rather than looping with var_ref.
+ *
+ * Revision 1.3  1997/03/03 06:20:04  bjj
+ * new_list(0) now returns the same empty list to every caller
+ *
  * Revision 1.2  1997/03/03 04:18:46  nop
  * GNU Indent normalization
  *

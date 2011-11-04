@@ -136,6 +136,8 @@ db_destroy_object(Objid oid)
     Verbdef *v, *w;
     int i;
 
+    db_priv_affected_callable_verb_lookup();
+
     if (!o)
 	panic("DB_DESTROY_OBJECT: Invalid object!");
 
@@ -181,6 +183,8 @@ db_renumber_object(Objid old)
 {
     Objid new;
     Object *o;
+
+    db_priv_affected_callable_verb_lookup();
 
     for (new = 0; new < old; new++) {
 	if (objects[new] == 0) {
@@ -285,18 +289,18 @@ db_object_bytes(Objid oid)
     Verbdef *v;
 
     count = sizeof(Object) + sizeof(Object *);
-    count += strlen(o->name) + 1;
+    count += memo_strlen(o->name) + 1;
 
     for (v = o->verbdefs; v; v = v->next) {
 	count += sizeof(Verbdef);
-	count += strlen(v->name) + 1;
+	count += memo_strlen(v->name) + 1;
 	if (v->program)
 	    count += program_bytes(v->program);
     }
 
     count += sizeof(Propdef) * o->propdefs.cur_length;
     for (i = 0; i < o->propdefs.cur_length; i++)
-	count += strlen(o->propdefs.l[i].name) + 1;
+	count += memo_strlen(o->propdefs.l[i].name) + 1;
 
     len = dbpriv_count_properties(oid);
     count += (sizeof(Pval) - sizeof(Var)) * len;
@@ -404,6 +408,19 @@ db_change_parent(Objid oid, Objid parent)
 
     if (!dbpriv_check_properties_for_chparent(oid, parent))
 	return 0;
+
+    if (objects[oid]->child == NOTHING && objects[oid]->verbdefs == NULL) {
+	/* Since this object has no children and no verbs, we know that it
+	   can't have had any part in affecting verb lookup, since we use first
+	   parent with verbs as a key in the verb lookup cache. */
+	/* The "no kids" rule is necessary because potentially one of the kids
+	   could have verbs on it--and that kid could have cache entries for
+	   THIS object's parentage. */
+	/* In any case, don't clear the cache. */
+	;
+    } else {
+	db_priv_affected_callable_verb_lookup();
+    }
 
     old_parent = objects[oid]->parent;
 
@@ -535,10 +552,31 @@ dbpriv_set_all_users(Var v)
 
 char rcsid_db_objects[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:18:29  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.5  2006/09/07 00:55:02  bjj
+ * Add new MEMO_STRLEN option which uses the refcounting mechanism to
+ * store strlen with strings.  This is basically free, since most string
+ * allocations are rounded up by malloc anyway.  This saves lots of cycles
+ * computing strlen.  (The change is originally from jitmoo, where I wanted
+ * inline range checks for string ops).
+ *
+ * Revision 1.4  1998/12/14 13:17:36  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3  1997/07/07 03:24:53  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ *
+ * Revision 1.2.2.2  1997/07/07 01:40:20  nop
+ * Because we use first-parent-with-verbs as a verb cache key, we can skip
+ * a generation bump if the target of a chparent has no kids and no verbs.
+ *
+ * Revision 1.2.2.1  1997/03/20 07:26:01  nop
+ * First pass at the new verb cache.  Some ugly code inside.
+ *
+ * Revision 1.2  1997/03/03 04:18:29  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:44:59  nop
  * LambdaMOO 1.8.0p5
  *

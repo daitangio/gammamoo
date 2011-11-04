@@ -35,6 +35,7 @@
 #include "storage.h"
 #include "streams.h"
 #include "structures.h"
+#include "str_intern.h"
 #include "unparse.h"
 #include "version.h"
 
@@ -190,6 +191,20 @@ dbio_read_string(void)
 	return buffer;
 }
 
+const char *
+dbio_read_string_intern(void)
+{
+    const char *s, *r;
+
+    s = dbio_read_string();
+    r = str_intern(s);
+
+    /* puts(r); */
+
+    return r;
+}
+
+
 Var
 dbio_read_var(void)
 {
@@ -205,8 +220,9 @@ dbio_read_var(void)
     case TYPE_CLEAR:
     case TYPE_NONE:
 	break;
-    case TYPE_STR:
-	r.v.str = str_dup(dbio_read_string());
+    case _TYPE_STR:
+	r.v.str = dbio_read_string_intern();
+	r.type |= TYPE_COMPLEX_FLAG;
 	break;
     case TYPE_OBJ:
     case TYPE_ERR:
@@ -215,10 +231,10 @@ dbio_read_var(void)
     case TYPE_FINALLY:
 	r.v.num = dbio_read_num();
 	break;
-    case TYPE_FLOAT:
+    case _TYPE_FLOAT:
 	r = new_float(dbio_read_float());
 	break;
-    case TYPE_LIST:
+    case _TYPE_LIST:
 	l = dbio_read_num();
 	r = new_list(l);
 	for (i = 0; i < l; i++)
@@ -354,8 +370,8 @@ dbio_write_var(Var v)
 {
     int i;
 
-    dbio_write_num((int) v.type);
-    switch (v.type) {
+    dbio_write_num((int) v.type & TYPE_DB_MASK);
+    switch ((int) v.type) {
     case TYPE_CLEAR:
     case TYPE_NONE:
 	break;
@@ -402,10 +418,26 @@ dbio_write_forked_program(Program * program, int f_index)
 
 char rcsid_db_io[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:18:27  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.5  1998/12/14 13:17:34  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.4  1998/02/19 07:36:16  nop
+ * Initial string interning during db load.
+ *
+ * Revision 1.3  1997/07/07 03:24:53  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ *
+ * Revision 1.2.2.1  1997/03/20 18:07:51  bjj
+ * Add a flag to the in-memory type identifier so that inlines can cheaply
+ * identify Vars that need actual work done to ref/free/dup them.  Add the
+ * appropriate inlines to utils.h and replace old functions in utils.c with
+ * complex_* functions which only handle the types with external storage.
+ *
+ * Revision 1.2  1997/03/03 04:18:27  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:44:59  nop
  * LambdaMOO 1.8.0p5
  *

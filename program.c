@@ -31,6 +31,9 @@ new_program(void)
 
     p->ref_count = 1;
     p->first_lineno = 1;
+    p->cached_lineno = 1;
+    p->cached_lineno_pc = 0;
+    p->cached_lineno_vec = MAIN_VECTOR;
     return p;
 }
 
@@ -76,7 +79,7 @@ program_bytes(Program * p)
 
     count += sizeof(const char *) * p->num_var_names;
     for (i = 0; i < p->num_var_names; i++)
-	count += strlen(p->var_names[i]) + 1;
+	count += memo_strlen(p->var_names[i]) + 1;
 
     return count;
 }
@@ -112,10 +115,28 @@ free_program(Program * p)
 
 char rcsid_program[] = "$Id$";
 
-/* $Log$
-/* Revision 1.3  1997/03/08 06:25:42  nop
-/* 1.8.0p6 merge by hand.
-/*
+/* 
+ * $Log$
+ * Revision 1.6  2006/09/07 00:55:02  bjj
+ * Add new MEMO_STRLEN option which uses the refcounting mechanism to
+ * store strlen with strings.  This is basically free, since most string
+ * allocations are rounded up by malloc anyway.  This saves lots of cycles
+ * computing strlen.  (The change is originally from jitmoo, where I wanted
+ * inline range checks for string ops).
+ *
+ * Revision 1.5  1998/12/14 13:18:48  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.4  1997/07/07 03:24:54  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ * 
+ * Revision 1.3.2.1  1997/06/05 09:00:00  bjj
+ * Cache one pc/lineno pair with each Program.  Hopefully most programs that
+ * fail multiple times usually do it on the same line!
+ *
+ * Revision 1.3  1997/03/08 06:25:42  nop
+ * 1.8.0p6 merge by hand.
+ *
  * Revision 1.2  1997/03/03 04:19:17  nop
  * GNU Indent normalization
  *

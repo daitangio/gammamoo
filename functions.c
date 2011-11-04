@@ -203,7 +203,7 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str)) { */
 	if (caller() != SYSTEM_OBJECT && f->protected) {
 	    /* Try calling #0:bf_FUNCNAME(@ARGS) instead */
-	    enum error e = call_verb(SYSTEM_OBJECT, f->verb_str, arglist, 0);
+	    enum error e = call_verb2(SYSTEM_OBJECT, f->verb_str, arglist, 0);
 
 	    if (e == E_NONE)
 		return tail_call_pack();
@@ -303,6 +303,16 @@ read_bi_func_data(Byte f_id, void **bi_func_state, Byte * bi_func_pc)
 
 
 package
+make_kill_pack()
+{
+    package p;
+
+    p.kind = BI_KILL;
+
+    return p;
+}
+
+package
 make_error_pack(enum error err)
 {
     return make_raise_pack(err, unparse_error(err), zero);
@@ -387,8 +397,9 @@ function_description(int i)
     nargs = entry.maxargs == -1 ? entry.minargs : entry.maxargs;
     vv = v.v.list[4] = new_list(nargs);
     for (j = 0; j < nargs; j++) {
+	int proto = entry.prototype[j];
 	vv.v.list[j + 1].type = TYPE_INT;
-	vv.v.list[j + 1].v.num = entry.prototype[j];
+	vv.v.list[j + 1].v.num = proto < 0 ? proto : (proto & TYPE_DB_MASK);
     }
 
     return v;
@@ -456,11 +467,34 @@ register_functions(void)
 
 char rcsid_functions[] = "$Id$";
 
-/* $Log$
-/* Revision 1.3  1997/03/03 05:03:50  nop
-/* steak2: move protectedness into builtin struct, load_server_options()
-/* now required for $server_options updates.
-/*
+/* 
+ * $Log$
+ * Revision 1.7  2001/03/12 05:10:54  bjj
+ * Split out call_verb and call_verb2.  The latter must only be called with
+ * strings that are already MOO strings (str_ref-able).
+ *
+ * Revision 1.6  2001/03/12 03:25:16  bjj
+ * Added new package type BI_KILL which kills the task calling the builtin.
+ * Removed the static int task_killed in execute.c which wa tested on every
+ * loop through the interpreter to see if the task had been killed.
+ *
+ * Revision 1.5  1998/12/14 13:17:53  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.4  1997/07/07 03:24:54  nop
+ * Merge UNSAFE_OPTS (r5) after extensive testing.
+ * 
+ * Revision 1.3.2.2  1997/05/12 04:03:21  bjj
+ * This time for sure!
+ *
+ * Revision 1.3.2.1  1997/05/11 04:31:54  bjj
+ * Missed the place in bf_function_info where TYPE_* constants make it into
+ * the database.  Masked off the complex flag in the obvious place.
+ *
+ * Revision 1.3  1997/03/03 05:03:50  nop
+ * steak2: move protectedness into builtin struct, load_server_options()
+ * now required for $server_options updates.
+ *
  * Revision 1.2  1997/03/03 04:18:42  nop
  * GNU Indent normalization
  *

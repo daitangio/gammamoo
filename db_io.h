@@ -46,6 +46,12 @@ extern const char *dbio_read_string(void);
 				 * str_dup() it if it is to persist.
 				 */
 
+extern const char *dbio_read_string_intern(void);
+				/* The returned string is duplicated
+				 * and possibly interned in a db-load
+				 * string intern table.
+				 */
+
 extern Var dbio_read_var(void);
 				/* The DBIO module retains no references to
 				 * the returned value, so freeing it is
@@ -90,10 +96,17 @@ extern void dbio_write_var(Var);
 extern void dbio_write_program(Program *);
 extern void dbio_write_forked_program(Program * prog, int f_index);
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:18:28  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.4  1998/12/14 13:17:35  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3  1998/02/19 07:36:16  nop
+ * Initial string interning during db load.
+ *
+ * Revision 1.2  1997/03/03 04:18:28  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:02  nop
  * LambdaMOO 1.8.0p5
  *

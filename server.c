@@ -88,8 +88,7 @@ typedef struct slistener {
 
 static slistener *all_slisteners = 0;
 
-server_listener null_server_listener =
-{0};
+server_listener null_server_listener = {0};
 
 static void
 free_shandle(shandle * h)
@@ -413,7 +412,7 @@ send_message(Objid listener, network_handle nh, const char *msg_name,...)
 	}
     } else			/* Use default message */
 	while ((line = va_arg(args, const char *)) != 0)
-	     network_send_line(nh, line, 1);
+	    network_send_line(nh, line, 1);
 
     va_end(args);
 }
@@ -485,18 +484,18 @@ main_loop(void)
 		nexth = h->next;
 
 		if (!h->outbound && h->connection_time == 0
-		&& (get_server_option(h->listener, "connect_timeout", &v)
-		    ? (v.type == TYPE_INT && v.v.num > 0
-		       && now - h->last_activity_time > v.v.num)
-		    : (now - h->last_activity_time
-		       > DEFAULT_CONNECT_TIMEOUT))) {
+		    && (get_server_option(h->listener, "connect_timeout", &v)
+			? (v.type == TYPE_INT && v.v.num > 0
+			   && now - h->last_activity_time > v.v.num)
+			: (now - h->last_activity_time
+			   > DEFAULT_CONNECT_TIMEOUT))) {
 		    call_notifier(h->player, h->listener, "user_disconnected");
 		    oklog("TIMEOUT: #%d on %s\n",
 			  h->player,
 			  network_connection_name(h->nhandle));
 		    if (h->print_messages)
 			send_message(h->listener, h->nhandle, "timeout_msg",
-				  "*** Timed-out waiting for login. ***",
+				     "*** Timed-out waiting for login. ***",
 				     0);
 		    network_close(h->nhandle);
 		    free_shandle(h);
@@ -506,7 +505,7 @@ main_loop(void)
 			  network_connection_name(h->nhandle));
 		    if (h->print_messages)
 			send_message(h->listener, h->nhandle,
-				   "recycle_msg", "*** Recycled ***", 0);
+				     "recycle_msg", "*** Recycled ***", 0);
 		    network_close(h->nhandle);
 		    free_shandle(h);
 		} else if (h->disconnect_me) {
@@ -559,41 +558,33 @@ init_cmdline(int argc, char *argv[])
     cmdline_buflen = p - argv[0];
 }
 
+#define SERVER_CO_TABLE(DEFINE, H, VALUE, _)				\
+    DEFINE(binary, _, TYPE_INT, num,					\
+	   H->binary,							\
+	   {								\
+	       H->binary = is_true(VALUE);				\
+	       network_set_connection_binary(H->nhandle, H->binary);	\
+	   })								\
+
 static int
 server_set_connection_option(shandle * h, const char *option, Var value)
 {
-    if (!mystrcasecmp(option, "binary")) {
-	h->binary = is_true(value);
-	network_set_connection_binary(h->nhandle, h->binary);
-	return 1;
-    }
-    return 0;
+    CONNECTION_OPTION_SET(SERVER_CO_TABLE, h, option, value);
 }
 
 static int
 server_connection_option(shandle * h, const char *option, Var * value)
 {
-    if (!mystrcasecmp(option, "binary")) {
-	value->type = TYPE_INT;
-	value->v.num = h->binary;
-	return 1;
-    }
-    return 0;
+    CONNECTION_OPTION_GET(SERVER_CO_TABLE, h, option, value);
 }
 
 static Var
 server_connection_options(shandle * h, Var list)
 {
-    Var pair;
-
-    pair = new_list(2);
-    pair.v.list[1].type = TYPE_STR;
-    pair.v.list[1].v.str = str_dup("binary");
-    pair.v.list[2].type = TYPE_INT;
-    pair.v.list[2].v.num = h->binary;
-
-    return listappend(list, pair);
+    CONNECTION_OPTION_LIST(SERVER_CO_TABLE, h, list);
 }
+
+#undef SERVER_CO_TABLE
 
 static char *
 read_stdin_line()
@@ -602,6 +593,7 @@ read_stdin_line()
     char *line, buffer[1000];
     int buflen;
 
+    fflush(stdout);
     if (!s)
 	s = new_stream(100);
 
@@ -819,6 +811,7 @@ emergency_mode()
 		else
 		    printf("%s\n", message);
 	    } else if (!mystrcasecmp(command, "abort") && nargs == 0) {
+	        printf("Bye.  (%s)\n\n", "NOT saving database");
 		exit(1);
 	    } else if (!mystrcasecmp(command, "quit") && nargs == 0) {
 		start_ok = 0;
@@ -827,7 +820,7 @@ emergency_mode()
 	    } else if (!mystrcasecmp(command, "debug") && nargs == 0) {
 		debug = !debug;
 	    } else if (!mystrcasecmp(command, "wizard") && nargs == 1
-		 && sscanf(words.v.list[2].v.str, "#%d", &wizard) == 1) {
+		       && sscanf(words.v.list[2].v.str, "#%d", &wizard) == 1) {
 		printf("** Switching to wizard #%d...\n", wizard);
 	    } else {
 		if (mystrcasecmp(command, "help")
@@ -869,6 +862,11 @@ emergency_mode()
 	    free_var(words);
 	}
     }
+
+    printf("Bye.  (%s)\n\n", start_ok ? "continuing" : "saving database");
+#if NETWORK_PROTOCOL != NP_SINGLE
+    fclose(stdout);
+#endif
 
     free_stream(s);
     in_emergency_mode = 0;
@@ -957,15 +955,23 @@ server_new_connection(server_listener sl, network_handle nh, int outbound)
     h->connection_time = 0;
     h->last_activity_time = time(0);
     h->player = next_unconnected_player--;
-    h->listener = outbound ? SYSTEM_OBJECT : l->oid;
+    h->listener = l ? l->oid : SYSTEM_OBJECT;
     h->tasks = new_task_queue(h->player, h->listener);
     h->disconnect_me = 0;
     h->outbound = outbound;
     h->binary = 0;
-    h->print_messages = (!outbound && l->print_messages);
+    h->print_messages = l ? l->print_messages : !outbound;
 
-    if (!outbound)
-	new_input_task(h->tasks, "");
+    if (l || !outbound) {
+	new_input_task(h->tasks, "", 0);
+	/*
+	 * Suspend input at the network level until the above input task
+	 * is processed.  At the point when it is dequeued, tasks.c will
+	 * notice that the queued input size is below the low water mark
+	 * and resume input.
+	 */
+	task_suspend_input(h->tasks);
+    }
 
     oklog("%s: #%d on %s\n",
 	  outbound ? "CONNECT" : "ACCEPT",
@@ -996,7 +1002,7 @@ server_receive_line(server_handle sh, const char *line)
     shandle *h = (shandle *) sh.ptr;
 
     h->last_activity_time = time(0);
-    new_input_task(h->tasks, line);
+    new_input_task(h->tasks, line, h->binary);
 }
 
 void
@@ -1041,6 +1047,12 @@ player_connected(Objid old_id, Objid new_id, int is_newly_created)
     new_h->connection_time = time(0);
 
     if (existing_h) {
+	/* we now have two shandles with the same player value while
+	 * find_shandle assumes there can only be one.  This needs to
+	 * be remedied before any call_notifier() call; luckily, the
+	 * latter only needs listener value.
+	 */
+	Objid existing_listener = existing_h->listener;
 	/* network_connection_name is allowed to reuse the same string
 	 * storage, so we have to copy one of them.
 	 */
@@ -1052,19 +1064,21 @@ player_connected(Objid old_id, Objid new_id, int is_newly_created)
 	      network_connection_name(new_h->nhandle));
 	free_str(name1);
 	if (existing_h->print_messages)
-	    send_message(existing_h->listener, existing_h->nhandle,
+	    send_message(existing_listener, existing_h->nhandle,
 			 "redirect_from_msg",
 			 "*** Redirecting connection to new port ***", 0);
 	if (new_h->print_messages)
 	    send_message(new_h->listener, new_h->nhandle, "redirect_to_msg",
-		   "*** Redirecting old connection to this port ***", 0);
+			 "*** Redirecting old connection to this port ***", 0);
 	network_close(existing_h->nhandle);
 	free_shandle(existing_h);
-	if (existing_h->listener == new_h->listener)
+	if (existing_listener == new_h->listener)
 	    call_notifier(new_id, new_h->listener, "user_reconnected");
 	else {
-	    call_notifier(new_id, existing_h->listener,
+	    new_h->disconnect_me = 1;
+	    call_notifier(new_id, existing_listener,
 			  "user_client_disconnected");
+	    new_h->disconnect_me = 0;
 	    call_notifier(new_id, new_h->listener, "user_connected");
 	}
     } else {
@@ -1081,7 +1095,7 @@ player_connected(Objid old_id, Objid new_id, int is_newly_created)
 			     "*** Connected ***", 0);
 	}
 	call_notifier(new_id, new_h->listener,
-		   is_newly_created ? "user_created" : "user_connected");
+		      is_newly_created ? "user_created" : "user_connected");
     }
 }
 
@@ -1218,6 +1232,13 @@ main(int argc, char **argv)
 		this_program, db_usage_string(), network_usage_string());
 	exit(1);
     }
+#if NETWORK_PROTOCOL != NP_SINGLE
+    if (!emergency)
+	fclose(stdout);
+#endif
+    if (log_file)
+	fclose(stderr);
+
     oklog("STARTING: Version %s of the LambdaMOO server\n", server_version);
     oklog("          (Using %s protocol)\n", network_protocol_name());
     oklog("          (Task timeouts measured in %s seconds.)\n",
@@ -1263,10 +1284,18 @@ static package
 bf_server_version(Var arglist, Byte next, void *vdata, Objid progr)
 {
     Var r;
-    r.type = TYPE_STR;
-    r.v.str = str_dup(server_version);
+    if (arglist.v.list[0].v.num > 0) {
+	r = server_version_full(arglist.v.list[1]);
+    }
+    else {
+	r.type = TYPE_STR;
+	r.v.str = str_dup(server_version);
+    }
     free_var(arglist);
-    return make_var_pack(r);
+    if (r.type == TYPE_ERR)
+	return make_error_pack(r.v.err);
+    else
+	return make_var_pack(r);
 }
 
 static package
@@ -1357,6 +1386,20 @@ bf_db_disk_size(Var arglist, Byte next, void *vdata, Objid progr)
 	return make_var_pack(v);
 }
 
+#ifdef OUTBOUND_NETWORK
+static slistener *
+find_slistener_by_oid(Objid obj)
+{
+    slistener *l;
+
+    for (l = all_slisteners; l; l = l->next)
+	if (l->oid == obj)
+	    return l;
+
+    return 0;
+}
+#endif /* OUTBOUND_NETWORK */
+
 static package
 bf_open_network_connection(Var arglist, Byte next, void *vdata, Objid progr)
 {
@@ -1364,11 +1407,37 @@ bf_open_network_connection(Var arglist, Byte next, void *vdata, Objid progr)
 
     Var r;
     enum error e;
+    server_listener sl;
+    slistener l;
 
-    if (!is_wizard(progr))
-	return make_error_pack(E_PERM);
+    if (!is_wizard(progr)) {
+        free_var(arglist);
+        return make_error_pack(E_PERM);
+    }
 
-    e = network_open_connection(arglist);
+    if (arglist.v.list[0].v.num == 3) {
+	Objid oid;
+
+	if (arglist.v.list[3].type != TYPE_OBJ) {
+	    return make_error_pack(E_TYPE);
+	}
+	oid = arglist.v.list[3].v.obj;
+	arglist = listdelete(arglist, 3);
+
+	sl.ptr = find_slistener_by_oid(oid);
+	if (!sl.ptr) {
+	    /* Create a temporary */
+	    l.print_messages = 0;
+	    l.name = "open_network_connection";
+	    l.desc = zero;
+	    l.oid = oid;
+	    sl.ptr = &l;
+	}
+    } else {
+	sl.ptr = NULL;
+    }
+
+    e = network_open_connection(arglist, sl);
     free_var(arglist);
     if (e == E_NONE) {
 	/* The connection was successfully opened, implying that
@@ -1551,7 +1620,7 @@ bf_set_connection_option(Var arglist, Byte next, void *vdata, Objid progr)
     else if (!h || h->disconnect_me
 	     || (!server_set_connection_option(h, option, value)
 		 && !tasks_set_connection_option(h->tasks, option, value)
-	   && !network_set_connection_option(h->nhandle, option, value)))
+		 && !network_set_connection_option(h->nhandle, option, value)))
 	e = E_INVARG;
 
     free_var(arglist);
@@ -1687,7 +1756,7 @@ bf_buffered_output_length(Var arglist, Byte next, void *vdata, Objid progr)
     if (nargs == 0)
 	r.v.num = MAX_QUEUED_OUTPUT;
     else {
-	shandle *h = find_shandle(arglist.v.list[1].v.obj);
+	shandle *h = find_shandle(conn);
 
 	if (!h)
 	    return make_error_pack(E_INVARG);
@@ -1703,7 +1772,7 @@ bf_buffered_output_length(Var arglist, Byte next, void *vdata, Objid progr)
 void
 register_server(void)
 {
-    register_function("server_version", 0, 0, bf_server_version);
+    register_function("server_version", 0, 1, bf_server_version, TYPE_ANY);
     register_function("renumber", 1, 1, bf_renumber, TYPE_OBJ);
     register_function("reset_max_object", 0, 0, bf_reset_max_object);
     register_function("memory_usage", 0, 0, bf_memory_usage);
@@ -1735,11 +1804,55 @@ register_server(void)
 
 char rcsid_server[] = "$Id$";
 
-/* $Log$
-/* Revision 1.3  1997/03/03 05:03:52  nop
-/* steak2: move protectedness into builtin struct, load_server_options()
-/* now required for $server_options updates.
-/*
+/* 
+ * $Log$
+ * Revision 1.12  2007/06/02 21:34:36  wrog
+ * fix player_connect() so that the user_client_disconnected hook
+ * sees a disconnected player, same as with server_close()
+ *
+ * Revision 1.11  2007/05/29 12:21:47  wrog
+ * fixes server panic (or lost messages) caused by attempting to write to freed network handle during #0:user_reconnected; removes the one case where server and network handles were not being freed together
+ *
+ * Revision 1.10  2006/11/21 18:42:37  pschwan
+ * b=1500775
+ * fixes two use-after-free bugs that could lead very rarely to
+ * calling the wrong functions during player connection
+ *
+ * Revision 1.9  2005/09/29 18:46:18  bjj
+ * Add third argument to open_network_connection() that associates a specific listener object with the new connection.  This simplifies a lot of outbound connection management.
+ *
+ * Revision 1.8  2004/05/25 07:28:55  wrog
+ * indentation fixes
+ *
+ * Revision 1.7  2004/05/22 01:25:44  wrog
+ * merging in WROGUE changes (W_SRCIP, W_STARTUP, W_OOB)
+ *
+ * Revision 1.5.10.4  2004/05/21 23:02:56  wrog
+ * NP_SINGLE needs to have stdout stay open
+ *
+ * Revision 1.5.10.3  2004/05/20 19:57:11  wrog
+ * fixed flushing issues w.r.t. emergency mode;
+ * close stdout and stderr when we are not using them
+ *
+ * Revision 1.6  2003/06/12 18:16:56  bjj
+ * Suspend input on connection until :do_login_command() can run.
+ *
+ * Revision 1.5.10.2  2003/06/11 10:40:16  wrog
+ * added binary argument to new_input_task()
+ *
+ * Revision 1.5.10.1  2003/06/07 12:59:04  wrog
+ * introduced connection_option macros
+ *
+ * Revision 1.5  1998/12/29 06:56:32  nop
+ * Fixed leak in onc().
+ *
+ * Revision 1.4  1998/12/14 13:18:57  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3  1997/03/03 05:03:52  nop
+ * steak2: move protectedness into builtin struct, load_server_options()
+ * now required for $server_options updates.
+ *
  * Revision 1.2  1997/03/03 04:19:24  nop
  * GNU Indent normalization
  *

@@ -253,7 +253,7 @@ cancel_timer(Timer_ID id)
     stop_timers();
 
     if (virtual_timer && virtual_timer->id == id) {
-	free(virtual_timer);
+	free_timer(virtual_timer);
 	virtual_timer = 0;
 	found = 1;
     } else {
@@ -263,7 +263,7 @@ cancel_timer(Timer_ID id)
 
 		*t = tt->next;
 		found = 1;
-		free(tt);
+		free_timer(tt);
 		break;
 	    }
 	    t = &((*t)->next);
@@ -302,10 +302,18 @@ reenable_timers(void)
 
 char rcsid_timers[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:19:33  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.4  2002/08/16 03:00:44  bjj
+ * free cancelled timers with free_timer() instead of free() so they can
+ * get re-used (typically there's only a handful) (harmless)
+ *
+ * Revision 1.3  1998/12/14 13:19:09  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.2  1997/03/03 04:19:33  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:01  nop
  * LambdaMOO 1.8.0p5
  *

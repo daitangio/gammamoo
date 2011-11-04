@@ -30,6 +30,9 @@ new_stream(int size)
 {
     Stream *s = mymalloc(sizeof(Stream), M_STREAM);
 
+    if (size < 1)
+	size = 1;
+
     s->buffer = mymalloc(size, M_STREAM);
     s->buflen = size;
     s->current = 0;
@@ -56,6 +59,13 @@ stream_add_char(Stream * s, char c)
 	grow(s, s->buflen * 2);
 
     s->buffer[s->current++] = c;
+}
+
+void
+stream_delete_char(Stream * s)
+{
+    if (s->current > 0)
+      s->current--;
 }
 
 void
@@ -229,10 +239,17 @@ stream_length(Stream * s)
 
 char rcsid_streams[] = "$Id$";
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:19:28  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.4  2006/12/06 23:57:51  wrog
+ * New INPUT_APPLY_BACKSPACE option to process backspace/delete characters on nonbinary connections (patch 1571939)
+ *
+ * Revision 1.3  1998/12/14 13:19:01  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.2  1997/03/03 04:19:28  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:01  nop
  * LambdaMOO 1.8.0p5
  *

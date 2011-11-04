@@ -27,6 +27,7 @@
 
 extern int fclose(FILE *);
 extern int fflush(FILE *);
+extern int fileno(FILE *);
 extern size_t fwrite(const void *, size_t, size_t, FILE *);
 extern int fgetc(FILE *);
 extern int fprintf(FILE *, const char *,...);
@@ -64,10 +65,17 @@ extern int vfscanf(FILE *, const char *, va_list);
 
 #endif				/* !My_Stdio_H */
 
-/* $Log$
-/* Revision 1.2  1997/03/03 04:18:56  nop
-/* GNU Indent normalization
-/*
+/* 
+ * $Log$
+ * Revision 1.4  2007/11/12 11:17:03  wrog
+ * sync so that checkpoint is physically written before prior checkpoint is unlinked
+ *
+ * Revision 1.3  1998/12/14 13:18:17  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.2  1997/03/03 04:18:56  nop
+ * GNU Indent normalization
+ *
  * Revision 1.1.1.1  1997/03/03 03:45:05  nop
  * LambdaMOO 1.8.0p5
  *

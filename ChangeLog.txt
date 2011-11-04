@@ -2313,6 +2313,180 @@ Version 1.8.0p6
 -- Fixed bug where toint() accepted arguments that were not
    syntactically correct (e.g., "-+5", "- 3").  Report from tijmen@dse.nl.
 
+
+Version 1.8.1, 10 January 2000
+-- New maintainers: Ben Jackson (ben@ben.com) and Jay Carlson (nop@nop.com)
+-- No significant user-visible changes to server behavior.
+-- Many internal memory usage bugs fixed.
+-- Server is significantly (200-400%) faster.
+-- Merged rX series of patches.
+**** Changes significant to programmers, wizards, and people compiling
+     the server follow:
+-- After modifying properties on $server_options, wizards must call
+   the new built-in function `load_server_options()'.  Changes made
+   may not take effect until this function is called.  This allows the
+   server to cache option values internally; this significantly speeds
+   up built-in function invocation.
+-- The server now caches verbname-to-Program lookups.  See README.rX
+   for details.  Two new built-in functions, `log_cache_stats()' and
+   `verb_cache_stats()' allow wizards to peer into verb cache
+   statistics.
+-- options.h now #defines IGNORE_PROP_PROTECTED by default.  If it is
+   defined, the server ignores all attempts to protect built-in
+   properties (such as $server_options.protect_location).  Protecting
+   properties is a significant performance hit, and most MOOs do not
+   use this functionality.
+-- The default input and output buffer sizes in options.h are now 64k.
+-- As the server loads the database, it "interns" all strings it
+   encounters, ensuring there initially will be one and only one
+   in-memory copy of each unique string.  This saves significant
+   amounts of memory for many medium and large databases---20-30% on
+   JHM.  The table used to uniquify strings is discarded after the
+   database is loaded, but depending on the OS memory allocation
+   strategy, the full savings may not be apparent through tools like
+   "ps" and "top".  Unused process space simply will be swapped out by
+   the OS over time.
+-- MOO code operations that manipulate lists now avoid copying the old
+   list value in some situations.  For example, `l[a] = b' will be
+   significantly faster for long lists, if `l' is the only reference
+   to the underlying list. This optimization can only be done outside
+   of error-handling expressions and `try' statements.  However, see
+   the notes in options.h on BYTECODE_REDUCE_REF for information on
+   the upgrade procedure currently required for safely enabling this.
+-- The server now declares some C functions as "static inline".  If
+   your C compiler doesn't understand this gcc-style declaration, add
+   "-Dinline=" to CFLAGS in the Makefile.  (This gross requirement
+   will go away once we upgrade to modern autoconf scripts.)
+-- There's primitive support for the 32-bit memory model for reducing
+   memory usage on the DEC Alpha using DEC cc.  See
+   SHORT_ALPHA_VAR_POINTERS in structures.h.
+**** Critical changes significant to server hackers follow:
+-- All C source code was processed with GNU indent using the settings
+   in the file `.indent.pro'.  This is an attempt to normalize coding
+   style.  This also breaks patch files against 1.8.0p6.
+-- The Memory_Type passed to mymalloc is now more significant.  In
+   particular, use of M_STRING as the typing for `void *' will break
+   your code, due to poor interactions with the new reference counting
+   system and alignment restrictions.  Only use M_STRING for strings.
+   To allocate a new kind of storage with mymalloc(), add a new type
+   name to the Memory_Type enum in storage.h.  (You can currently get
+   away with reusing a type like M_VM, but this may break eventually.)
+-- Server hackers should read README.rX for more information on
+   changes to server internals.
+
+Version 1.8.2, circa November 2006 (not released)
+Because of the long time with no release after 1.8.1, some distributors began
+to distribute 1.8.1 plus patches as 1.8.2.  To avoid confusion, we have opted
+to make the next official release version 1.8.3.
+
+Version 1.8.3, circa June 2008 (not released)
+-- SF bug #887464: fixed a bug in the server's startup processing, in which it
+   scans for unknown built-in functions in active verbs (Thanks luke-jr and
+   Gavin Lambert for reports and patches.)
+-- Server will report progress every few seconds (rather than every 10k objects)
+   during potentially long-running operations (loading, validating, writing)
+-- New validation algorithms for cycle-detection and hierarchy checking vastly
+   decrease startup time on large databases.
+-- SF bug #1552816: fixed an issue that could cause tracebacks in emergency mode
+   to produce "Unknown Var type" errors
+-- SF bug #1500775: fixed two use-after-free bugs that could lead very rarely to
+   calling the wrong functions during player connection (Thanks Garance Drosehn
+   for the report and initial patch.)
+-- Added sync so that checkpoint file will not be lost by being unlinked
+   before being physically written to the disk
+-- Fixed uninitialized fileds that caused occasional weirdness in size accounting
+   for forked tasks and wrong line numbers in decompile
+**** Changes relevant to programmers / wizards:
+-- SF bug #227620: add_verb() now returns (positive integer) verb index
+-- bf_crypt() now passes salts longer than 2 characters to the underlying C
+   function.  This works fine for traditional DES crypts and supports modern
+   modular crypts like FreeBSD's.  See the Programmers Manual for more details.
+-- bf_queued_tasks() entries include a 10th element (size of the task in bytes)
+-- bf_open_network_connection() accepts an optional third argument that
+   associates a specific listener object with the new connection.  This
+   simplifies a lot of outbound connection management.
+-- network input is suspended on new connections until after the initial
+   #0:do_login_command call returns.  Thus do_login_command may now reliably
+   set binary mode without losing data.
+-- connection_option()/connection_options()/set_connection_option() now
+   recognize the following new options:
+   (*) "intrinsic-commands"
+       which determines which (if any) of the commands
+          .program
+          PREFIX
+          SUFFIX
+          OUTPUTPREFIX
+          OUTPUTSUFFIX
+       will be recognized on that connection.  Option value is a list
+       of strings, but set_connection_option() also accepts any numeric
+       value, in which case all 5 intrinsic commands are enabled/disabled
+       according to the value being true/false.
+   (*) "disable-oob"
+       which, if set true, disables all out-of-band command processing
+       on subsequent input lines, i.e., the server behaves for that
+       connection as if OUT_OF_BAND_PREFIX had never been #defined.
+       Out-of-band quoting (see below) is likewise disabled.
+-- If "disable-oob" is set false (as it is by default), then it is now the case
+   that all out-of-band lines will be processed as out-of-band commands (i.e.,
+   by #0:do_out_of_band_command) if no 'flush' command intervenes; setting of
+   "hold-input" and/or making intervening read() calls will not affect this.
+   (This fixes a bug whereby read() sometimes snarfed out-of-band lines.)
+-- Setting connection_option "binary" now disables all out-of-band processing
+   on that connection.
+**** Changes significant to people compiling and running the server:
+-- several fixes for warnings, wrong use of free() vs myfree(), etc.
+-- fixes to support modern toolchains (bison, autoconf, ...)
+-- Admins can trade faster startup for increased memory consumption by
+   disabling STRING_INTERNING in options.h
+-- Added a new compile option (MEMO_STRLEN in options.h) that optimizes away
+   most strlen computations.
+-- A new OUT_OF_BAND_QUOTE_PREFIX is added; any player input lines that begin
+   with this string will be stripped of this prefix and processed normally, even
+   if the resulting line begins with OUT_OF_BAND_PREFIX.  This provides a means
+   for quoting lines that would otherwise trigger do_out_of_band_command.
+-- If the server is compiled with OUTBOUND_NETWORK, this may now be  explicitly
+   enabled/disabled from the server command line using +O and -O respectively.
+-- If the server is compiled with NP_TCP, there is now a command line option
+   `-a SOURCE-ADDRESS' to bind and listen on a specific interface, instead of
+   all interfaces.
+-- Fixed some flushing issues with emergency wizard mode (-e).
+   The server now behaves a bit more sensibly when stdin comes from a pipe.
+   stdout and stderr are now closed if they are not being used.
+   (Outside of emergency wizard mode, stdout is only used on an an NP_SINGLE
+   server; stderr is only used if no logfile (-l) is specifed.)
+-- Added new compile option INPUT_APPLY_BACKSPACE to process
+   backspace/delete characters on nonbinary connections (patch 1571939)
+**** Changes relevant to server hackers:
+-- New call_verb2() accepts verb name that is a MOO string (ie, str_ref-able)
+-- str_hash() replaced with a faster (and better?) string hash function
+
+
+Version 1.8.4, in progress
+-- Fix FOR statement infinite loop when $maxint is the upper limit
+-- Fix random($maxint) to return in correct range
+
+**** Changes relevant to programmers / wizards:
+-- server_version() now takes an argument so that information
+   about the server build can be available in-db.
+
+**** Changes significant to people compiling and running the server:
+-- Source/build information that is compiled into the server now 
+   comes from version_src.h.  Purpose and format of this file is
+   now described in version_src.txt.
+-- New GNUmakefile invokes optional ./version_hook which can be linked
+   to any script that will generate a version_src.h file from source
+   control information as appropriate.  (You can also have a static
+   version_src.h file that #defines the VERSION_* macros.)
+
+**** Changes relevant to server hackers:
+-- Added HACKING as an index to the various server-hacking
+   documentation files scattered about the source directory.
+   (do we need a doc directory?)
+-- If you add or remove #defines from options.h, you should update
+   version_opt_gen.pl accordingly and rerun it to generate a new
+   version_options.h, which then populates the group returned
+   by server_version("options").
+
 Version X, in progress
 **** Changes relevant to programmers / wizards:
 -- The File I/O extension has been merged (disabled by default). See

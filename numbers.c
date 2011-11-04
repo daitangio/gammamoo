@@ -638,9 +638,11 @@ bf_random(Var arglist, Byte next, void *vdata, Objid progr)
 	Var r;
 
 	r.type = TYPE_INT;
-	if (nargs == 0)
-	    r.v.num = RANDOM();
-	else
+	if (nargs == 0) {
+	    do
+		r.v.num = RANDOM();
+	    while (r.v.num == 0);
+	} else
 	    r.v.num = RANDOM() % num + 1;
 	return make_var_pack(r);
     }
@@ -709,10 +711,14 @@ register_numbers(void)
 
 char rcsid_numbers[] = "$Id$";
 
-/* $Log$
-/* Revision 1.3  1997/03/08 06:25:42  nop
-/* 1.8.0p6 merge by hand.
-/*
+/* 
+ * $Log$
+ * Revision 1.4  1998/12/14 13:18:37  nop
+ * Merge UNSAFE_OPTS (ref fixups); fix Log tag placement to fit CVS whims
+ *
+ * Revision 1.3  1997/03/08 06:25:42  nop
+ * 1.8.0p6 merge by hand.
+ *
  * Revision 1.2  1997/03/03 04:19:11  nop
  * GNU Indent normalization
  *
