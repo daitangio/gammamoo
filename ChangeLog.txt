@@ -2312,3 +2312,8 @@ Version 1.8.0p6
    (Report from Joe Shaw, fix from Pavel.)
 -- Fixed bug where toint() accepted arguments that were not
    syntactically correct (e.g., "-+5", "- 3").  Report from tijmen@dse.nl.
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- The File I/O extension has been merged (disabled by default). See
+   FileioDocs.txt for details, and options.h to enable it.
