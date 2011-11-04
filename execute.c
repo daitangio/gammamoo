@@ -194,12 +194,19 @@ suspend_task(package p)
 }
 
 static int raise_error(package p, enum outcome *outcome);
+static void abort_task(enum abort_reason reason);
 
 static int
 unwind_stack(Finally_Reason why, Var value, enum outcome *outcome)
 {
-    /* Returns true iff the entire stack was unwound and the interpreter
-     * should stop, in which case *outcome is the correct outcome to return. */
+    /* Returns true iff the interpreter should stop,
+     * in which case *outcome is set to the correct outcome to return.
+     * Interpreter stops either because it was blocked (OUTCOME_BLOCKED)
+     * or the entire stack was unwound (OUTCOME_DONE/OUTCOME_ABORTED)
+     *
+     * why==FIN_EXIT always returns false
+     * why==FIN_ABORT always returns true/OUTCOME_ABORTED
+     */
     Var code = (why == FIN_RAISE ? value.v.list[1] : zero);
 
     for (;;) {			/* loop over activations */
@@ -312,7 +319,10 @@ unwind_stack(Finally_Reason why, Var value, enum outcome *outcome)
 		    a->bi_func_data = p.u.call.data;
 		    return 0;
 		case BI_KILL:
-		    return unwind_stack(FIN_ABORT, zero, outcome);
+		    abort_task(p.u.ret.v.num);
+		    if (outcome)
+			*outcome = OUTCOME_ABORTED;
+		    return 1;
 		}
 	    } else {
 		/* Built-in functions receive zero as a `returned value' on
@@ -481,20 +491,39 @@ raise_error(package p, enum outcome *outcome)
 }
 
 static void
-abort_task(int is_ticks)
+abort_task(enum abort_reason reason)
 {
     Var value;
-    const char *msg = (is_ticks ? "Task ran out of ticks"
-		       : "Task ran out of seconds");
+    const char *msg;
+    const char *htag;
 
-    value = new_list(3);
-    value.v.list[1].type = TYPE_STR;
-    value.v.list[1].v.str = str_dup(is_ticks ? "ticks" : "seconds");
-    value.v.list[2] = make_stack_list(activ_stack, 0, top_activ_stack, 1,
-				      root_activ_vector, 1);
-    value.v.list[3] = error_backtrace_list(msg);
-    save_handler_info("handle_task_timeout", value);
-    unwind_stack(FIN_ABORT, zero, 0);
+    switch(reason) {
+    default:
+	panic("Bad abort_reason");
+	/*NOTREACHED*/
+
+    case ABORT_TICKS:
+	msg  = "Task ran out of ticks";
+	htag = "ticks";
+	goto save_hinfo;
+
+    case ABORT_SECONDS:
+	msg = "Task ran out of seconds";
+	htag = "seconds";
+
+    save_hinfo:
+	value = new_list(3);
+	value.v.list[1].type = TYPE_STR;
+	value.v.list[1].v.str = str_dup(htag);
+	value.v.list[2] = make_stack_list(activ_stack, 0, top_activ_stack, 1,
+					  root_activ_vector, 1);
+	value.v.list[3] = error_backtrace_list(msg);
+	save_handler_info("handle_task_timeout", value);
+	/* fall through */
+
+    case ABORT_KILL:
+	(void) unwind_stack(FIN_ABORT, zero, 0);
+    }
 }
 
 /**** activation manipulation ****/
@@ -647,48 +676,7 @@ rangeset_check(int end, int from, int to)
 #ifdef IGNORE_PROP_PROTECTED
 #define bi_prop_protected(prop, progr) (0)
 #else
-static int
-bi_prop_protected(enum bi_prop prop, Objid progr)
-{
-    const char *pname = 0;	/* silence warning */
-
-    if (is_wizard(progr))
-	return 0;
-
-    switch (prop) {
-    case BP_NAME:
-	pname = "protect_name";
-	break;
-    case BP_OWNER:
-	pname = "protect_owner";
-	break;
-    case BP_PROGRAMMER:
-	pname = "protect_programmer";
-	break;
-    case BP_WIZARD:
-	pname = "protect_wizard";
-	break;
-    case BP_R:
-	pname = "protect_r";
-	break;
-    case BP_W:
-	pname = "protect_w";
-	break;
-    case BP_F:
-	pname = "protect_f";
-	break;
-    case BP_LOCATION:
-	pname = "protect_location";
-	break;
-    case BP_CONTENTS:
-	pname = "protect_contents";
-	break;
-    default:
-	panic("Can't happen in BI_PROP_PROTECTED!");
-    }
-
-    return server_flag_option(pname);
-}
+#define bi_prop_protected(prop, progr) ((!is_wizard(progr)) && server_flag_option_cached(prop))
 #endif				/* IGNORE_PROP_PROTECTED */
 
 /** 
@@ -790,12 +778,12 @@ do {    						    	\
 	if (COUNT_TICK(op)) {
 	    if (--ticks_remaining <= 0) {
 		STORE_STATE_VARIABLES();
-		abort_task(1);
+		abort_task(ABORT_TICKS);
 		return OUTCOME_ABORTED;
 	    }
 	    if (task_timed_out) {
 		STORE_STATE_VARIABLES();
-		abort_task(0);
+		abort_task(ABORT_SECONDS);
 		return OUTCOME_ABORTED;
 	    }
 	}
@@ -1471,9 +1459,10 @@ do {    						    	\
 			case BP_NAME:
 			    if (rhs.type != TYPE_STR)
 				err = E_TYPE;
-			    else if (!is_wizard(progr)
-				     && (is_user(obj.v.obj)
-				 || progr != db_object_owner(obj.v.obj)))
+			    else if (!is_wizard(progr) &&
+				     (is_user(obj.v.obj) ||
+				      bi_prop_protected(h.built_in, progr) ||
+				      progr != db_object_owner(obj.v.obj)))
 				err = E_PERM;
 			    break;
 			case BP_OWNER:
@@ -1505,8 +1494,9 @@ do {    						    	\
 			case BP_R:
 			case BP_W:
 			case BP_F:
-			    if (progr != db_object_owner(obj.v.obj)
-				&& !is_wizard(progr))
+			    if (!is_wizard(progr) &&
+				(bi_prop_protected(h.built_in, progr) ||
+				 progr != db_object_owner(obj.v.obj)))
 				err = E_PERM;
 			    break;
 			case BP_LOCATION:
@@ -1666,7 +1656,7 @@ do {    						    	\
 			break;
 		    case BI_KILL:
 			STORE_STATE_VARIABLES();
-			unwind_stack(FIN_ABORT, zero, 0);
+			abort_task(p.u.ret.v.num);
 			return OUTCOME_ABORTED;
 			/* NOTREACHED */
 		    }
@@ -1923,7 +1913,7 @@ do {    						    	\
 			v.v.list[2].type = TYPE_INT;
 			v.v.list[2].v.num = READ_BYTES(bv, bc.numbytes_label);
 			STORE_STATE_VARIABLES();
-			unwind_stack(FIN_EXIT, v, 0);
+			(void) unwind_stack(FIN_EXIT, v, 0);
 			LOAD_STATE_VARIABLES();
 		    }
 		    break;
@@ -2120,6 +2110,7 @@ run_interpreter(char raise, enum error e,
        suspend().) */
 {
     enum outcome ret;
+    Var args;
 
     setup_task_execution_limits(is_fg ? server_int_option("fg_seconds",
 						      DEFAULT_FG_SECONDS)
@@ -2130,25 +2121,28 @@ run_interpreter(char raise, enum error e,
 				: server_int_option("bg_ticks",
 						    DEFAULT_BG_TICKS));
 
+    /* handler_verb_* is garbage/unreferenced outside of run()
+     * and this is the only place run() is called. */
     handler_verb_args = zero;
     handler_verb_name = 0;
     interpreter_is_running = 1;
     ret = run(raise, e, result);
     interpreter_is_running = 0;
-    task_timed_out = 0;
+    args = handler_verb_args;
+
     cancel_timer(task_alarm_id);
+    task_timed_out = 0;
 
     if (ret == OUTCOME_ABORTED && handler_verb_name) {
 	db_verb_handle h;
-        enum outcome hret;
-	Var args, handled, traceback;
+	enum outcome hret;
+	Var handled, traceback;
 	int i;
 
-	args = handler_verb_args;
 	h = db_find_callable_verb(SYSTEM_OBJECT, handler_verb_name);
 	if (do_db_tracebacks && h.ptr) {
 	    hret = do_server_verb_task(SYSTEM_OBJECT, handler_verb_name,
-				       var_ref(handler_verb_args), h,
+				       var_ref(args), h,
 				       activ_stack[0].player, "", &handled,
 				       0/*no-traceback*/);
 	    if ((hret == OUTCOME_DONE && is_true(handled))
@@ -2162,8 +2156,8 @@ run_interpreter(char raise, enum error e,
 	traceback = args.v.list[i];	/* traceback is always the last argument */
 	for (i = 1; i <= traceback.v.list[0].v.num; i++)
 	    notify(activ_stack[0].player, traceback.v.list[i].v.str);
-	free_var(args);
     }
+    free_var(args);
     return ret;
 }
 

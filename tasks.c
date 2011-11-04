@@ -950,11 +950,13 @@ static void
 flush_input(tqueue * tq, int show_messages)
 {
     if (tq->first_input) {
-	Stream *s = new_stream(100);
+	Stream *s = 0;
 	task *t;
 
-	if (show_messages)
+	if (show_messages) {
 	    notify(tq->player, ">> Flushing the following pending input:");
+	    s = new_stream(100);
+	}
 	while ((t = dequeue_input_task(tq, DQ_FIRST)) != 0) {
 	    /* TODO*** flush only non-TASK_OOB tasks ??? */
 	    if (show_messages) {
@@ -963,8 +965,10 @@ flush_input(tqueue * tq, int show_messages)
 	    }
 	    free_task(t, 1);
 	}
-	if (show_messages)
+	if (show_messages) {
 	    notify(tq->player, ">> (Done flushing)");
+	    free_stream(s);
+	}
     } else if (show_messages)
 	notify(tq->player, ">> No pending input to flush...");
 }
@@ -1366,7 +1370,7 @@ register_task_queue(task_enumerator enumerator)
 static void
 write_forked_task(forked_task ft)
 {
-    int lineno = find_line_number(ft.program, ft.f_index, 0);
+    unsigned lineno = find_line_number(ft.program, ft.f_index, 0);
 
     dbio_printf("0 %d %d %d\n", lineno, ft.start_time, ft.id);
     write_activ_as_pi(ft.a);
@@ -1586,7 +1590,7 @@ find_verb_for_programming(Objid player, const char *verbref,
     if (!h.ptr)
 	*message = "That object does not have that verb definition.";
     else if (!db_verb_allows(h, player, VF_WRITE)
-	     || (server_flag_option("protect_set_verb_code")
+	     || (server_flag_option("protect_set_verb_code", 0)
 		 && !is_wizard(player))) {
 	*message = "Permission denied.";
 	h.ptr = 0;
@@ -2079,7 +2083,7 @@ bf_kill_task(Var arglist, Byte next, void *vdata, Objid progr)
     if (e != E_NONE)
 	return make_error_pack(e);
     else if (id == current_task_id)
-	return make_kill_pack();
+	return make_abort_pack(ABORT_KILL);
 
     return no_var_pack();
 }

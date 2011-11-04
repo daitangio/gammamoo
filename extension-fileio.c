@@ -44,14 +44,10 @@ typedef unsigned short umode_t;
  * Utility functions
  *****************************************************/
 
-const char *
-raw_bytes_to_clean(const char *buffer, int buflen)
+void
+stream_add_raw_bytes_to_clean(Stream *s, const char *buffer, int buflen)
 {
-    static Stream *s = 0;
     int i;
-
-    if (!s)
-	s = new_stream(100);
 
     for (i = 0; i < buflen; i++) {
 	unsigned char c = buffer[i];
@@ -60,8 +56,6 @@ raw_bytes_to_clean(const char *buffer, int buflen)
 	    stream_add_char(s, c);
 	/* else drop it on the floor */
     }
-
-    return reset_stream(s);
 }
 
 const char *
@@ -84,7 +78,7 @@ typedef struct file_type *file_type;
 
 struct file_type {
 
-    const char* (*in_filter)(const char *data, int buflen);
+    void (*in_filter_s)(Stream *s, const char *data, int buflen);
 
     const char* (*out_filter)(const char *data, int *buflen);
 
@@ -259,9 +253,9 @@ file_modestr_to_mode(const char *s, file_type *type, file_mode *mode)
     if (!file_type_binary) {
 	file_type_binary = mymalloc(sizeof(struct file_type), M_STRING);
 	file_type_text = mymalloc(sizeof(struct file_type), M_STRING);
-	file_type_binary->in_filter = raw_bytes_to_binary;
+	file_type_binary->in_filter_s = stream_add_raw_bytes_to_binary;
 	file_type_binary->out_filter = binary_to_raw_bytes;
-	file_type_text->in_filter = raw_bytes_to_clean;
+	file_type_text->in_filter_s = stream_add_raw_bytes_to_clean;
 	file_type_text->out_filter = clean_to_raw_bytes;
     }
 
@@ -661,8 +655,13 @@ bf_file_readline(Var arglist, Byte next, void *vdata, Objid progr)
 	if ((line = file_read_line(fhandle, &len)) == NULL)
 	    r = file_raise_errno("readline");
 	else {
+	    static Stream *s = 0;
+	    if (!s)
+		s = new_stream(80);
+
+	    (type->in_filter_s)(s, line, len);
 	    rv.type = TYPE_STR;
-	    rv.v.str = str_dup((type->in_filter)(line, len));
+	    rv.v.str = str_dup(reset_stream(s));
 	    r = make_var_pack(rv);
 	}
     }
@@ -741,6 +740,10 @@ bf_file_readlines(Var arglist, Byte next, void *vdata, Objid progr)
 	if (((begin != 0) && (line == NULL)) || ((begin_loc = ftell(f)) == -1))
 	    r = file_raise_errno("read_line");
 	else {
+	    static Stream *s = 0;
+	    if (!s)
+		s = new_stream(80);
+
 	    type = file_handle_type(fhandle);
 
 	    /*
@@ -752,8 +755,9 @@ bf_file_readlines(Var arglist, Byte next, void *vdata, Objid progr)
 
 	    while((current_line != end)
 			    && ((line = file_read_line(fhandle, &len)) != NULL)) {
+		(type->in_filter_s)(s, line, len);
 		linebuf_cur->next = new_line_buffer(
-				    str_dup((type->in_filter)(line, len)));
+				    str_dup(reset_stream(s)));
 		linebuf_cur = linebuf_cur->next;
 
 		current_line++;
@@ -879,7 +883,7 @@ try_again:
 	    r = file_raise_errno(file_handle_name(fhandle));
 	} else if (read && ((len += read) < record_length)){
 	    /* We got something this time, but it isn't enough. */
-	    stream_add_string(str, (type->in_filter)(buffer, read));
+	    (type->in_filter_s)(str, buffer, read);
 	    read = 0;
 	    goto try_again;
 	} else {
@@ -889,7 +893,7 @@ try_again:
 	     * We got everything we need.
 	     */
 
-	    stream_add_string(str, (type->in_filter)(buffer, read));
+	    (type->in_filter_s)(str, buffer, read);
 
 	    rv.type = TYPE_STR;
 	    rv.v.str = str_dup(reset_stream(str));

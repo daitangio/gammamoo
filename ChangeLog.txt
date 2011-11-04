@@ -2462,12 +2462,19 @@ Version 1.8.3, circa June 2008 (not released)
 
 
 Version 1.8.4, in progress
--- Fix FOR statement infinite loop when $maxint is the upper limit
--- Fix random($maxint) to return in correct range
+-- Fix FOR statement infinite loop when $maxint is the upper limit.
+-- Fix random($maxint) to return in correct range.
+-- Fix memory leak in flush_input.
+-- Fix memory leak in run_interpreter/save_handler_info
+   in the case where FINALLY returns/breaks/suspends.
+-- Fix random(m) to be uniformly distributed for m!=2^k
+   to allow for m > RAND_MAX
 
 **** Changes relevant to programmers / wizards:
 -- server_version() now takes an argument so that information
    about the server build can be available in-db.
+-- $server_options.protect_<prop> now prevents non-wizard *writes*
+   and must be followed by load_server_options() to take effect
 
 **** Changes significant to people compiling and running the server:
 -- Source/build information that is compiled into the server now 
@@ -2477,6 +2484,7 @@ Version 1.8.4, in progress
    to any script that will generate a version_src.h file from source
    control information as appropriate.  (You can also have a static
    version_src.h file that #defines the VERSION_* macros.)
+-- IGNORE_PROP_PROTECTED deprecated since no longer necessary
 
 **** Changes relevant to server hackers:
 -- Added HACKING as an index to the various server-hacking
@@ -2486,6 +2494,15 @@ Version 1.8.4, in progress
    version_opt_gen.pl accordingly and rerun it to generate a new
    version_options.h, which then populates the group returned
    by server_version("options").
+-- some prep work for 64-bit MOO currently isolated in numbers.c
+   (will need autoconf update to work properly)
+-- server_flag_option() now takes an explicit default argument
+-- rename load_server_protect_flags() to
+   load_server_protect_function_flags()
+-- make_abort_pack(ABORT_KILL) replaces make_kill_pack()
+   builtin functions can now cause other kinds of aborts
+-- added caching regime for server options other than 
+   .protect_<function>
 
 Version X, in progress
 **** Changes relevant to programmers / wizards:

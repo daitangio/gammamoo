@@ -372,33 +372,9 @@ db_find_property(Objid oid, const char *name, Var * value)
 	enum bi_prop prop;
 	int hash;
     } ptable[] = {
-	{
-	    "name", BP_NAME, 0
-	},
-	{
-	    "owner", BP_OWNER, 0
-	},
-	{
-	    "programmer", BP_PROGRAMMER, 0
-	},
-	{
-	    "wizard", BP_WIZARD, 0
-	},
-	{
-	    "r", BP_R, 0
-	},
-	{
-	    "w", BP_W, 0
-	},
-	{
-	    "f", BP_F, 0
-	},
-	{
-	    "location", BP_LOCATION, 0
-	},
-	{
-	    "contents", BP_CONTENTS, 0
-	}
+#define _ENTRY(P,p) { #p, BP_##P, 0 },
+      BUILTIN_PROPERTIES(_ENTRY)
+#undef _ENTRY
     };
     static int ptable_init = 0;
     int i, n;
@@ -411,13 +387,13 @@ db_find_property(Objid oid, const char *name, Var * value)
 	    ptable[i].hash = str_hash(ptable[i].name);
 	ptable_init = 1;
     }
+    h.definer = NOTHING;
     for (i = 0; i < Arraysize(ptable); i++) {
 	if (ptable[i].hash == hash && !mystrcasecmp(name, ptable[i].name)) {
 	    static Objid ret;
 
 	    ret = oid;
 	    h.built_in = ptable[i].prop;
-	    h.definer = NOTHING;
 	    h.ptr = &ret;
 	    if (value)
 		get_bi_value(h, value);

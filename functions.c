@@ -200,7 +200,7 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	/*
 	 * Check permissions, if protected
 	 */
-	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str)) { */
+	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str, 0)) { */
 	if (caller() != SYSTEM_OBJECT && f->protected) {
 	    /* Try calling #0:bf_FUNCNAME(@ARGS) instead */
 	    enum error e = call_verb2(SYSTEM_OBJECT, f->verb_str, arglist, 0);
@@ -303,12 +303,13 @@ read_bi_func_data(Byte f_id, void **bi_func_state, Byte * bi_func_pc)
 
 
 package
-make_kill_pack()
+make_abort_pack(enum abort_reason reason)
 {
     package p;
 
     p.kind = BI_KILL;
-
+    p.u.ret.type = TYPE_INT;
+    p.u.ret.v.num = reason;
     return p;
 }
 
@@ -429,20 +430,44 @@ bf_function_info(Var arglist, Byte next, void *vdata, Objid progr)
 }
 
 static void
-load_server_protect_flags(void)
+load_server_protect_function_flags(void)
 {
     int i;
 
     for (i = 0; i < top_bf_table; i++) {
-	bf_table[i].protected = server_flag_option(bf_table[i].protect_str);
+	bf_table[i].protected
+	    = server_flag_option(bf_table[i].protect_str, 0);
     }
-    oklog("Loaded protect cache for %d builtins\n", i);
+    oklog("Loaded protect cache for %d builtin functions\n", i);
 }
+
+int _server_int_option_cache[SVO__CACHE_SIZE];
 
 void
 load_server_options(void)
 {
-    load_server_protect_flags();
+    /* uncomment when SERVER_OPTIONS_CACHED_MISC is nonempty */
+    /* int value; */
+
+    load_server_protect_function_flags();
+
+# define _BP_DO(PROPERTY, property)				\
+      _server_int_option_cache[SVO_PROTECT_##PROPERTY]		\
+	  = server_flag_option("protect_" #property, 0);	\
+
+    BUILTIN_PROPERTIES(_BP_DO);
+
+# undef _BP_DO
+
+# define _SVO_DO(SVO_MISC_OPTION, misc_option,			\
+		 kind, DEFAULT, CANONICALIZE)			\
+      value = server_##kind##_option(#misc_option, DEFAULT);	\
+      CANONICALIZE;						\
+      _server_int_option_cache[SVO_MISC_OPTION] = value;	\
+
+    SERVER_OPTIONS_CACHED_MISC(_SVO_DO, value);
+
+# undef _SVO_DO
 }
 
 static package
