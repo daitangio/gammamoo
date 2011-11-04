@@ -2313,6 +2313,7 @@ Version 1.8.0p6
 -- Fixed bug where toint() accepted arguments that were not
    syntactically correct (e.g., "-+5", "- 3").  Report from tijmen@dse.nl.
 
+
 Version 1.8.1, 10 January 2000
 -- New maintainers: Ben Jackson (ben@ben.com) and Jay Carlson (nop@nop.com)
 -- No significant user-visible changes to server behavior.
@@ -2566,6 +2567,8 @@ Version X, in progress
 	X |. Y	Bitwise   OR   operation
 	X ^. Y	Bitwise  XOR   operation
 	~X	Bitwise  NOT   operation
+-- The File I/O extension has been merged (disabled by default). See
+   FileioDocs.txt for details, and options.h to enable it.
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by

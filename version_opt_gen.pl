@@ -49,6 +49,12 @@ my @options =
 		MAX_QUEUED_INPUT
 	      )],
 
+   # File I/O
+   _DDEF => [qw(FILE_IO)],
+   _DINT => [qw(FILE_IO_MAX_FILES)],
+   _DSTR => [qw(FILE_SUBDIR)],
+   _DINT => [qw(FILE_IO_BUFFER_LENGTH)],
+
    # optimizations
    _DDEF => [qw(USE_GNU_MALLOC
 		UNFORKED_CHECKPOINTS

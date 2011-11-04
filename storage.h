@@ -38,6 +38,9 @@ typedef enum Memory_Type {
 
     M_VERBHANDLE,
 
+    /* where no more specific type applies */
+    M_STRUCT,
+
     Sizeof_Memory_Type
 
 } Memory_Type;

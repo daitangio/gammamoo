@@ -206,6 +206,28 @@
 #define MAX_QUEUED_INPUT	MAX_QUEUED_OUTPUT
 #define DEFAULT_CONNECT_TIMEOUT	300
 
+ /******************************************************************************
+ * The File I/O extension adds several new builtins that allow the
+ * manipulation of files from MOO code. Please read FileioDocs.txt for more
+ * details.
+ *
+ * *** THINK VERY HARD BEFORE ENABLING THIS EXTENSION ***
+ * Granting MOO code direct access to files opens a hole in the otherwise
+ * fairly good wall that the LambdaMOO server puts up between the OS and
+ * the database.  The extension contains the risk as much as possible by
+ * restricting where files can be opened and allowing the new builtins to
+ * be called by wizard permissions only.  It is still possible execute
+ * various forms denial of service attacks, but the MOO server allows
+ * this form of attack as well.
+ */
+
+/* #define FILE_IO 1 */
+
+#define FILE_IO_MAX_FILES 256
+#define FILE_SUBDIR "files/"
+
+#define FILE_IO_BUFFER_LENGTH 4096
+
 /******************************************************************************
  * On connections that have not been set to binary mode, the server normally
  * discards incoming characters that are not printable ASCII, including

@@ -19,6 +19,7 @@
 #define Version_H 1
 
 #include "config.h"
+#include "options.h"
 #include "structures.h"
 
 /*****************************************************************
@@ -27,6 +28,16 @@
 
 extern const char *server_version;
 extern Var server_version_full(Var);
+
+
+/*****************************************************************
+ * File I/O Version
+ */
+
+#ifdef FILE_IO
+extern char file_package_name[];
+extern char file_package_version[];
+#endif
 
 
 /*****************************************************************
@@ -55,6 +66,8 @@ typedef enum {
 				 * making it use tail-calling.  This DB_Version
 				 * change exists solely to turn off special
 				 * bug handling in read_bi_func_data().
+				 */
+    DBV_FileIO,			/* Includes addition of the 'E_FILE' keyword.
 				 */
     Num_DB_Versions		/* Special: the current version is this - 1. */
 } DB_Version;
