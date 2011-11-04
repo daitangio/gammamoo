@@ -55,6 +55,12 @@ my @options =
    _DSTR => [qw(FILE_SUBDIR)],
    _DINT => [qw(FILE_IO_BUFFER_LENGTH)],
 
+   _DDEF => [qw(FILE_IO_LOGGER)],
+   _DSTR => [qw(FILE_IO_LOGGER_SUBDIR)],
+   _DSTR => [qw(FILE_IO_LOGGER_FORMAT)],
+   _DLIT => [qw(FILE_IO_LOGGER_FORMAT_VARS)],
+   _DSTR => [qw(FILE_IO_LOGGER_FORMAT_TIME)],
+
    # optimizations
    _DDEF => [qw(USE_GNU_MALLOC
 		UNFORKED_CHECKPOINTS
@@ -117,6 +123,17 @@ EOF
    };
 }
 
+$put{_DLIT} = sub {
+      my ($n) = @_;
+      print OREFL <<EOF ;
+#${indent}ifdef $n
+_DSTR1s($n)
+#${indent}else
+_DNDEF("$n")
+#${indent}endif
+EOF
+};
+
 $put{_DENUM} = sub {
    my($d,@svals) = @{$_[0]};
    print OREFL <<EOF ;
@@ -148,6 +165,8 @@ print OREFL <<EOF ;
 /******************************************************************/
 #define _DINT1(OPT) _DINT(#OPT,OPT)
 #define _DSTR1(OPT) _DSTR(#OPT,OPT)
+#define ___str(...) #__VA_ARGS__
+#define _DSTR1s(OPT) _DSTR(#OPT,___str(OPT))
 EOF
 put_dlist('', @options);
 close OREFL;

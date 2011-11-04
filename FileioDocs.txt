@@ -58,16 +58,25 @@
   and uncomment out the following line:
          #define FILE_IO 1
 
+  If you wish to use the logger feature (see section 4), you may also
+  (or instead) uncomment the line further down:
+         #define FILE_IO_LOGGER 1
+
   You may also edit other detailed settings:
     FILE_IO_MAX_FILES           the limit of files open
     FILE_SUBDIR                 the File I/O jail directory
     FILE_IO_BUFFER_LENGTH       the maximum line/data length
+    FILE_IO_LOGGER_SUBDIR       the logger jail directory
+    FILE_IO_LOGGER_FORMAT       printf format used for log filenames
+    FILE_IO_LOGGER_FORMAT_VARS  variables used for strftime formatting
+                                pick from: time, counter, and pathname
+    FILE_IO_LOGGER_FORMAT_TIME  strftime format used for log filenames
 
-  Finally, make the files directory in the directory the MOO server is
-  run in.  Only files in this directory will be accessible using this
-  patch.
+  Finally, make the jail directories in the directory the MOO server is
+  run in.  Only files in these directories will be accessible using this
+  extension.
 
-         mkdir files
+         mkdir files logs
 
   Pathnames passed to these functions are restricted to prevent access
   outside this directory.
@@ -160,6 +169,9 @@
 
   o  a+ opens the file for reading and writing, creates it if does not
      exist and positions the stream at the end of the file.
+
+     If the first character is an uppercase 'A', all write attempts
+     will seek to the end of the file prior to writing.
 
      The third character is either (t)ext or (b)inary.  In text mode,
      data is written as-is from the MOO and data read in by the MOO is
@@ -410,3 +422,17 @@
 
   This is implemented using chmod().
 
+  4.  Logger
+
+  This extension supports a special mode for append-once log files.
+  If enabled, any file named starting with '/LOG/' (it must be
+  uppercase) will be considered an append-once log. These files may only
+  be opened for writing under the capital-(A)ppend mode, and may have
+  their names modified to be unique before creating them. The modified
+  name can be discovered using the file_name() function. Once closed,
+  the files may be read, but are strictly read-only.
+
+  Furthermore, the functions file_remove(), file_rename(), and
+  file_chmod() are not permitted on these files. With these precautions,
+  they should be safe to use for security logging without compromising
+  your filesystem.

@@ -131,6 +131,9 @@ static void init_version_structure()
 #ifdef FILE_IO
     PUSH_PAIR(file_package_name,STR,file_package_version)
 #endif
+#ifdef FILE_IO_LOGGER
+    PUSH_PAIR(file_logger_name,STR,file_logger_version)
+#endif
 #define _FDEF(name) PUSH_VALUE(STR,#name)
 #ifdef VERSION_FEATURES
     VERSION_FEATURES(_FDEF);

@@ -2491,3 +2491,5 @@ Version X, in progress
 **** Changes relevant to programmers / wizards:
 -- The File I/O extension has been merged (disabled by default). See
    FileioDocs.txt for details, and options.h to enable it.
+-- Added support for the File I/O Logger, a special limited mode for
+   append-once logging.

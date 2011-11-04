@@ -38,6 +38,10 @@ extern Var server_version_full(Var);
 extern char file_package_name[];
 extern char file_package_version[];
 #endif
+#ifdef FILE_IO_LOGGER
+extern const char *file_logger_name;
+extern const char *file_logger_version;
+#endif
 
 
 /*****************************************************************
