@@ -56,7 +56,7 @@ static registry bi_function_registries[] =
     register_tasks,
     register_verbs,
 /***************************/
-	 register_fileio
+    register_fileio
 /***************************/
 };
 

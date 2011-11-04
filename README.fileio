@@ -5,7 +5,7 @@ FileIO is a patch to the LambdaMOO server to allow stdio-style access to
 files.  Please see the file fileio-docs.txt for complete information.
 
 The current version of FileIO, along with documentation in HTML format,
-is on-line at 
+is on-line at
 
   http://www.scinc.com/~abakun/fileio/
 
