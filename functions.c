@@ -419,7 +419,7 @@ is_core_function_internal(const char *func, char **buf_out)
     s[bilen + 8] = '\0';
 
     memcpy(&s[4], "bf__", 4);
-    h = db_find_defined_verb(SYSTEM_OBJECT, &s[4], 0);
+    h = db_find_callable_verb(SYSTEM_OBJECT, &s[4]);
     if (!h.ptr)
 	return 0;
 
