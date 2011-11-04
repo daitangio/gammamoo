@@ -2569,6 +2569,8 @@ Version X, in progress
 	~X	Bitwise  NOT   operation
 -- The File I/O extension has been merged (disabled by default). See
    FileioDocs.txt for details, and options.h to enable it.
+-- Added support for the File I/O Logger, a special limited mode for
+   append-once logging.
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by

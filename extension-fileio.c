@@ -4,7 +4,10 @@
 
 #include "options.h"
 
-#ifdef FILE_IO
+#if defined(FILE_IO) || defined(FILE_IO_LOGGER)
+
+static const char logger_pfx[] = "/LOG/";
+#define LOGGER_PFX_LEN (sizeof(logger_pfx) - 1)
 
 #include <stdio.h>
 
@@ -20,6 +23,9 @@
 
 #include "my-ctype.h"
 #include "my-string.h"
+#ifdef FILE_IO_LOGGER
+#include "my-time.h"
+#endif
 #include "structures.h"
 #include "exceptions.h"
 #include "bf_register.h"
@@ -92,6 +98,10 @@ file_type file_type_text = NULL;
 #define FILE_O_READ       1
 #define FILE_O_WRITE      2
 #define FILE_O_FLUSH      4
+#define FILE_O_APPEND    32
+#ifdef FILE_IO_LOGGER
+#define FILE_O_LOG       64
+#endif
 
 typedef unsigned char file_mode;
 
@@ -119,6 +129,8 @@ struct line_buffer {
 
 char file_package_name[]    = "FIO";
 char file_package_version[] = "1.5p3";
+const char *file_logger_name    = "FIO Logger";
+const char *file_logger_version = "0.2";
 
 
 /***************************************************************
@@ -262,19 +274,33 @@ file_modestr_to_mode(const char *s, file_type *type, file_mode *mode)
     if (strlen(s) != 4)
 	return 0;
 
+    buffer[p++] = s[0];
+
     if (s[0] == 'r')
 	m |= FILE_O_READ;
+#ifdef FILE_IO
     else if (s[0] == 'w')
 	m |= FILE_O_WRITE;
     else if (s[0] == 'a')
 	m |= FILE_O_WRITE;
+#endif
+    else if (s[0] == 'A')
+    {
+	m |= FILE_O_WRITE | FILE_O_APPEND;
+	buffer[p - 1] = 'a';
+    }
     else
 	return NULL;
 
-    buffer[p++] = s[0];
-
     if (s[1] == '+') {
-	m |= (s[0] == 'r') ? FILE_O_WRITE : FILE_O_READ;
+	if (s[0] == 'r')
+#ifdef FILE_IO
+	    m |= FILE_O_WRITE;
+#else
+	    return NULL;
+#endif
+	else
+	m |= FILE_O_READ;
 	buffer[p++] = '+';
     } else if (s[1] != '-') {
 	return NULL;
@@ -382,6 +408,16 @@ file_verify_path(const char *pathname)
     return 1;
 }
 
+#ifdef FILE_IO_LOGGER
+int file_allowed_mode(file_mode *rmode) {
+    if (!(*rmode & FILE_O_LOG))
+	return 1;
+    if (*rmode & FILE_O_APPEND)
+	return 1;
+    return !(*rmode & FILE_O_WRITE);
+}
+#endif
+
 /***************************************************************
  * Common code for FHANDLE-using functions
  **************************************************************/
@@ -412,6 +448,9 @@ const char *
 file_resolve_path(const char *pathname)
 {
     static Stream *s = 0;
+#ifdef FILE_IO_LOGGER
+    int islog = 0;
+#endif
 
     if (!s)
 	s = new_stream(strlen(pathname) + strlen(FILE_SUBDIR) + 1);
@@ -419,16 +458,73 @@ file_resolve_path(const char *pathname)
     if (!file_verify_path(pathname))
 	return NULL;
 
-    stream_add_string(s, FILE_SUBDIR);
-    if (pathname[0] == '/')
-	stream_add_string(s, pathname + 1);
+#ifdef FILE_IO_LOGGER
+    if (!strncmp(pathname, logger_pfx, LOGGER_PFX_LEN))
+    {
+	pathname += LOGGER_PFX_LEN;
+	islog = 1;
+    }
+#ifndef FILE_IO
     else
+	return NULL;
+#endif /* ! FILE_IO */
+#endif /* FILE_IO_LOGGER */
+
+    while(pathname[0] == '/')
+	++pathname;
+
+#ifdef FILE_IO_LOGGER
+    if (islog)
+	stream_add_string(s, FILE_IO_LOGGER_SUBDIR);
+    else
+#endif
+    stream_add_string(s, FILE_SUBDIR);
 	stream_add_string(s, pathname);
 
     return reset_stream(s);
 
 }
 
+#ifdef FILE_IO_LOGGER
+int file_log_insert_id(file_mode *rmode, const char **filename, const char **real_filename) {
+    if (strncmp(*filename, logger_pfx, LOGGER_PFX_LEN))
+	return 0;
+    if (!(*rmode & FILE_O_WRITE))
+	return 0;
+
+    {
+	static Stream *s = 0;
+	const char *pathname = *filename + LOGGER_PFX_LEN;
+
+	if (!s)
+	    s = new_stream(strlen(*filename) + 64);
+
+	*rmode |= FILE_O_LOG;
+	stream_add_string(s, logger_pfx);
+
+	{
+	    static unsigned int counter = 0;
+#ifdef FILE_IO_LOGGER_FORMAT_TIME
+	    time_t c = time(0);
+	    char time[256];
+	    if (!strftime(time, 256, FILE_IO_LOGGER_FORMAT_TIME, gmtime(&c)))
+		return 1;
+#endif
+	    ++counter;
+	    stream_printf(s, FILE_IO_LOGGER_FORMAT, FILE_IO_LOGGER_FORMAT_VARS);
+	    *filename = reset_stream(s);
+	    *real_filename = file_resolve_path(*filename);
+
+	    if (!*real_filename)
+		return 2;
+	}
+    }
+
+    return 0;
+}
+#endif
+
+#ifdef FILE_IO
 /***************************************************************
  * Built in functions
  * file_version
@@ -448,6 +544,7 @@ bf_file_version(Var arglist, Byte next, void *vdata, Objid progr)
     return make_var_pack(rv);
 
 }
+#endif
 
 
 /***************************************************************
@@ -471,6 +568,7 @@ bf_file_open(Var arglist, Byte next, void *vdata, Objid progr)
     file_mode rmode;
     file_type type;
     FILE *f;
+    mode_t old_mask;
 
     errno = 0;
 
@@ -481,13 +579,36 @@ bf_file_open(Var arglist, Byte next, void *vdata, Objid progr)
     else if ((fmode = file_modestr_to_mode(mode, &type, &rmode)) == NULL)
 	r = make_raise_pack(E_INVARG, "Invalid mode string",
 			    var_ref(arglist.v.list[2]));
+#ifdef FILE_IO_LOGGER
+    else if (file_log_insert_id(&rmode, &filename, &real_filename))
+	r = make_raise_pack(E_INVARG, "Couldn't process log filename",
+			    var_ref(arglist.v.list[1]));
+    else if (!file_allowed_mode(&rmode))
+	r = make_raise_pack(E_PERM, "Mode string not permitted",
+			    var_ref(arglist.v.list[2]));
+#endif
     else if ((fhandle = file_handle_new(filename, type, rmode)).v.num < 0)
 	r = make_raise_pack(E_QUOTA, "Too many files open", zero);
+#if defined(FILE_IO_LOGGER) && defined(FILE_IO_LOGGER_UMASK)
+    else if ((rmode & FILE_O_LOG) && (
+	     old_mask = umask(0),
+	     umask(old_mask | S_IWUSR | S_IWGRP | S_IWOTH),
+	     0) && 0)
+	r = make_raise_pack(E_NONE, "This error is impossible", zero);
+#endif
     else if ((f = fopen(real_filename, fmode)) == NULL) {
 	file_handle_destroy(fhandle);
+#ifdef FILE_IO_LOGGER
+	if (rmode & FILE_O_LOG)
+	    umask(old_mask);
+#endif
 	r = file_raise_errno("file_open");
     } else {
 	/* phew, we actually got a successfull open */
+#ifdef FILE_IO_LOGGER
+	if (rmode & FILE_O_LOG)
+	    umask(old_mask);
+#endif
 	file_handle_set_file(fhandle, f);
 	r = make_var_pack(fhandle);
     }
@@ -565,6 +686,8 @@ bf_file_openmode(Var arglist, Byte next, void *vdata, Objid progr)
 	mode = file_handle_mode(fhandle);
 	if (mode & FILE_O_READ) {
 	    buffer[0] = 'r';
+	} else if(mode & FILE_O_APPEND) {
+	    buffer[0] = 'A';
 	} else if (mode & FILE_O_WRITE) {
 	    buffer[0] = 'w';
 	}
@@ -813,6 +936,8 @@ bf_file_writeline(Var arglist, Byte next, void *vdata, Objid progr)
     } else if (!(mode = file_handle_mode(fhandle)) & FILE_O_WRITE)
 	r = make_raise_pack(E_INVARG, "File is open read-only", fhandle);
     else {
+	if (mode & FILE_O_APPEND)
+	    fseek(f, 0, SEEK_END);
 	type = file_handle_type(fhandle);
 	if ((rawbuffer = (type->out_filter)(buffer, &len)) == NULL)
 	    r = make_raise_pack(E_INVARG, "Invalid binary string", fhandle);
@@ -959,6 +1084,8 @@ bf_file_write(Var arglist, Byte next, void *vdata, Objid progr)
     } else if (!(mode = file_handle_mode(fhandle)) & FILE_O_WRITE)
 	r = make_raise_pack(E_INVARG, "File is open read-only", fhandle);
     else {
+	if (mode & FILE_O_APPEND)
+	    fseek(f, 0, SEEK_END);
 	type = file_handle_type(fhandle);
 	if ((rawbuffer = (type->out_filter)(buffer, &len)) == NULL)
 	    r = make_raise_pack(E_INVARG, "Invalid binary string", fhandle);
@@ -1460,6 +1587,10 @@ bf_file_rmdir(Var arglist, Byte next, void *vdata, Objid progr)
     return r;
 }
 
+#endif /* FILE_IO || FILE_IO_LOGGER */
+
+#ifdef FILE_IO
+
 /*
  * void file_remove(STR pathname)
  */
@@ -1473,6 +1604,11 @@ bf_file_remove(Var arglist, Byte next, void *vdata, Objid progr)
 
     if (!file_verify_caller(progr)) {
 	r = file_raise_notokcall("file_remove", progr);
+#ifdef FILE_IO_LOGGER
+    } else if (!strncmp(pathspec, logger_pfx, LOGGER_PFX_LEN)) {
+	r = make_raise_pack(E_PERM, "Cannot remove logs",
+			    var_ref(arglist.v.list[1]));
+#endif
     } else if ((real_pathname = file_resolve_path(pathspec)) == NULL) {
 	r = file_raise_notokfilename("file_remove", pathspec);
     } else {
@@ -1500,6 +1636,12 @@ bf_file_rename(Var arglist, Byte next, void *vdata, Objid progr)
 
     if (!file_verify_caller(progr)) {
 	r = file_raise_notokcall("file_rename", progr);
+#ifdef FILE_IO_LOGGER
+    } else if (!strncmp(fromspec, logger_pfx, LOGGER_PFX_LEN) ||
+	       !strncmp(tospec, logger_pfx, LOGGER_PFX_LEN)) {
+	r = make_raise_pack(E_PERM, "Cannot rename logs",
+			    var_ref(arglist.v.list[1]));
+#endif
     } else if ((real_fromspec = str_dup(file_resolve_path(fromspec))) == NULL) {
 	r = file_raise_notokfilename("file_rename", fromspec);
     } else if ((real_tospec = file_resolve_path(tospec)) == NULL) {
@@ -1559,6 +1701,10 @@ bf_file_chmod(Var arglist, Byte next, void *vdata, Objid progr)
 	r = file_raise_notokcall("file_chmod", progr);
     } else if (!file_chmodstr_to_mode(modespec, &newmode)) {
 	r = make_raise_pack(E_INVARG, "Invalid mode string", zero);
+#ifdef FILE_IO_LOGGER
+    } else if (!strncmp(pathspec, logger_pfx, LOGGER_PFX_LEN)) {
+	r = make_raise_pack(E_PERM, "Cannot chmod logs", var_ref(arglist.v.list[1]));
+#endif
     } else if ((real_filename = file_resolve_path(pathspec)) == NULL) {
 	r =  file_raise_notokfilename("file_chmod", pathspec);
     } else {
@@ -1578,9 +1724,13 @@ bf_file_chmod(Var arglist, Byte next, void *vdata, Objid progr)
 void
 register_fileio(void)
 {
+#if defined(FILE_IO) || defined(FILE_IO_LOGGER)
+
 #ifdef FILE_IO
 
     register_function("file_version", 0, 0, bf_file_version);
+
+#endif
 
     register_function("file_open", 2, 2, bf_file_open, TYPE_STR, TYPE_STR);
     register_function("file_close", 1, 1, bf_file_close, TYPE_INT);
@@ -1605,9 +1755,11 @@ register_fileio(void)
     register_function("file_list", 1, 2, bf_file_list, TYPE_STR, TYPE_ANY);
     register_function("file_mkdir", 1, 1, bf_file_mkdir, TYPE_STR);
     register_function("file_rmdir", 1, 1, bf_file_rmdir, TYPE_STR);
+#ifdef FILE_IO
     register_function("file_remove", 1, 1, bf_file_remove, TYPE_STR);
     register_function("file_rename", 2, 2, bf_file_rename, TYPE_STR, TYPE_STR);
     register_function("file_chmod", 2, 2, bf_file_chmod, TYPE_STR, TYPE_STR);
+#endif
 
     register_function("file_size", 1, 1, bf_file_size, TYPE_ANY);
     register_function("file_mode", 1, 1, bf_file_mode, TYPE_ANY);

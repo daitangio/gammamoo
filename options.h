@@ -228,6 +228,13 @@
 
 #define FILE_IO_BUFFER_LENGTH 4096
 
+/* #define FILE_IO_LOGGER 1 */
+#define FILE_IO_LOGGER_SUBDIR "logs/"
+#define FILE_IO_LOGGER_UMASK
+#define FILE_IO_LOGGER_FORMAT "%s_%d_%s.log"
+#define FILE_IO_LOGGER_FORMAT_VARS time, counter, pathname
+#define FILE_IO_LOGGER_FORMAT_TIME "%s"
+
 /******************************************************************************
  * On connections that have not been set to binary mode, the server normally
  * discards incoming characters that are not printable ASCII, including
