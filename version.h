@@ -19,6 +19,7 @@
 #define Version_H 1
 
 #include "config.h"
+#include "options.h"
 #include "structures.h"
 
 /*****************************************************************
@@ -27,6 +28,16 @@
 
 extern const char *server_version;
 extern Var server_version_full(Var);
+
+
+/*****************************************************************
+ * File I/O Version
+ */
+
+#ifdef FILE_IO
+extern char file_package_name[];
+extern char file_package_version[];
+#endif
 
 
 /*****************************************************************

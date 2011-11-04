@@ -128,6 +128,9 @@ static void init_version_structure()
     PUSH_PAIR("string",STR,server_version);
 
     BEGIN_GROUP(features);
+#ifdef FILE_IO
+    PUSH_PAIR(file_package_name,STR,file_package_version)
+#endif
 #define _FDEF(name) PUSH_VALUE(STR,#name)
 #ifdef VERSION_FEATURES
     VERSION_FEATURES(_FDEF);
