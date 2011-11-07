@@ -2528,6 +2528,7 @@ Version X, in progress
 -- Whenever the player flag is cleared on an object, or an object with the
    player flag set is recycled, the server will now output a traceback to the
    log.
+-- Enabled keepalive on TCP connections.
 
 **** Changes relevant to programmers / wizards:
 -- Setting binary mode immediately flushes the connection's buffer, if any
