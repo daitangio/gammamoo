@@ -2572,6 +2572,11 @@ Version X, in progress
    FileioDocs.txt for details, and options.h to enable it.
 -- Added support for the File I/O Logger, a special limited mode for
    append-once logging.
+-- If the server is built with libgcrypt support, the builtin hashing functions
+   (binary_hash, string_hash, and value_hash) accept an optional second
+   argument, a string specifying which hash algorithm to use. For
+   compatibility, the default algorithm is MD5 (please note that MD5 is not
+   cryptographically secure).
 
 **** Changes significant to people compiling and running the server:
 -- Specific property names can be reserved, preventing them from being used by
@@ -2579,6 +2584,9 @@ Version X, in progress
    ensure future WAIF compatibility.
 -- The `restart' and `restart.sh' scripts have been modified to use gzip
    instead of the old `compress' program.
+-- The server can be (and is, by default) linked against libgcrypt for more
+   hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
+   this or cannot use libgcrypt for some reason.
 
 **** Changes relevant to server hackers:
 -- Makefile now uses gperf (3.0.1+) to generate keywords.c
