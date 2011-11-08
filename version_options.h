@@ -94,6 +94,11 @@ _DDEF("MEMO_STRLEN")
 #else
 _DNDEF("MEMO_STRLEN")
 #endif
+#ifdef MOO_GCRYPT
+_DDEF("MOO_GCRYPT")
+#else
+_DNDEF("MOO_GCRYPT")
+#endif
 #ifdef LOG_COMMANDS
 _DDEF("LOG_COMMANDS")
 #else

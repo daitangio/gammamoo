@@ -2485,3 +2485,15 @@ Version 1.8.4, in progress
    version_opt_gen.pl accordingly and rerun it to generate a new
    version_options.h, which then populates the group returned
    by server_version("options").
+
+Version X, in progress
+**** Changes relevant to programmers / wizards:
+-- If the server is built with libgcrypt support, the builtin hashing functions
+   (binary_hash, string_hash, and value_hash) accept an optional second
+   argument, a string specifying which hash algorithm to use. For
+   compatibility, the default algorithm is MD5 (please note that MD5 is not
+   cryptographically secure).
+**** Changes significant to people compiling and running the server:
+-- The server can be (and is, by default) linked against libgcrypt for more
+   hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
+   this or cannot use libgcrypt for some reason.

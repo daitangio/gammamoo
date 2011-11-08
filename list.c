@@ -922,6 +922,34 @@ bf_value_bytes(Var arglist, Byte next, void *vdata, Objid progr)
     return make_var_pack(r);
 }
 
+#ifdef MOO_GCRYPT
+
+/* this is here because someone made stream exceptions private  --ljr */
+
+extern package hash_bytes(Var arglist, const char *, size_t);
+
+package
+bf_value_hash(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    package p;
+    Stream *s = new_stream(100);
+
+    TRY_STREAM {
+	Var r;
+
+	unparse_value(s, arglist.v.list[1]);
+	p = hash_bytes(arglist, stream_contents(s), stream_length(s));
+    }
+    EXCEPT (stream_too_big) {
+	p = make_space_pack();
+    }
+    ENDTRY_STREAM;
+    free_stream(s);
+    return p;
+}
+
+#else
+
 static const char *
 hash_bytes(const char *input, int length)
 {
@@ -980,6 +1008,8 @@ bf_value_hash(Var arglist, Byte next, void *vdata, Objid progr)
     free_var(arglist);
     return make_var_pack(r);
 }
+
+#endif
 
 static package
 bf_decode_binary(Var arglist, Byte next, void *vdata, Objid progr)
@@ -1103,9 +1133,11 @@ void
 register_list(void)
 {
     register_function("value_bytes", 1, 1, bf_value_bytes, TYPE_ANY);
+#ifndef MOO_GCRYPT
     register_function("value_hash", 1, 1, bf_value_hash, TYPE_ANY);
     register_function("string_hash", 1, 1, bf_string_hash, TYPE_STR);
     register_function("binary_hash", 1, 1, bf_binary_hash, TYPE_STR);
+#endif
     register_function("decode_binary", 1, 2, bf_decode_binary,
 		      TYPE_STR, TYPE_ANY);
     register_function("encode_binary", 0, -1, bf_encode_binary);
