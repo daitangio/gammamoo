@@ -448,14 +448,21 @@ bf_core_function(Var arglist, Byte next, void *vdata, Objid progr)
     if (!is_core_function_internal(arglist.v.list[1].v.str, &s))
     {
 	free_str(s);
+	free_var(arglist);
 	return make_error_pack(E_VERBNF);
     }
 
     /* don't allow calling real builtins this way */
     fnum = number_func_by_name(arglist.v.list[1].v.str);
-    if (fnum != FUNC_NOT_FOUND && fnum != core_function_num)
-	return make_raise_pack(E_INVARG, "Can't call real built-in functions via core_function",
+    if (fnum != FUNC_NOT_FOUND && fnum != core_function_num) {
+	package p;
+
+	free_str(s);
+	p = make_raise_pack(E_INVARG, "Can't call real built-in functions via core_function",
 			       var_ref(arglist.v.list[1]));
+	free_var(arglist);
+	return p;
+    }
 
     arglist = listdelete(arglist, 1);
 
