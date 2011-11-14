@@ -66,6 +66,7 @@ SRCS = $(ALL_CSRCS) keywords.gperf $(YSRCS) $(HDRS) $(SYSHDRS)
 DISTFILES = $(SRCS) Makefile.in restart restart.sh \
 	Minimal.db README.Minimal \
 	ChangeLog.txt README configure.in configure config.h.in \
+	ChangeLog-fileio.txt FileioDocs.txt \
 	MOOCodeSequences.txt AddingNewMOOTypes.txt pgperf aclocal.m4
 
 COBJS = $(CSRCS:.c=.o)
