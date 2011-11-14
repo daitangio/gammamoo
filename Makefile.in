@@ -144,8 +144,8 @@ dist.tar.gz:	$(DISTFILES)
 	chmod u+w MOO-`cat version_number`/*
 	tar cvf - MOO-`cat version_number` | gzip -c > dist.tar.gz.NEW
 	mv dist.tar.gz.NEW dist.tar.gz
-	rm -f LambdaMOO-`cat version_number`.tar.gz
-	ln dist.tar.gz LambdaMOO-`cat version_number`.tar.gz
+	rm -f GammaMOO-`cat version_number`.tar.gz
+	ln dist.tar.gz GammaMOO-`cat version_number`.tar.gz
 	rm -fr MOO-`cat version_number` version_number
 
 tags:
