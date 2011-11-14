@@ -74,6 +74,7 @@ SRCS = $(ALL_CSRCS) keywords.gperf $(YSRCS) $(HDRS) $(SYSHDRS)
 DISTFILES = $(SRCS) GNUmakefile Makefile.in restart restart.sh \
 	Minimal.db README.Minimal \
 	ChangeLog.txt README configure.in configure config.h.in \
+	ChangeLog-fileio.txt FileioDocs.txt \
 	MOOCodeSequences.txt AddingNewMOOTypes.txt aclocal.m4 \
 	HACKING \
 	version_opt_gen.pl version_options.h version_src.txt
