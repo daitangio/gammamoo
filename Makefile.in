@@ -71,10 +71,12 @@ ALL_CSRCS = $(CSRCS) $(OPT_CSRCS) $(CLIENT_SRCS)
 
 SRCS = $(ALL_CSRCS) keywords.gperf $(YSRCS) $(HDRS) $(SYSHDRS)
 
-DISTFILES = $(SRCS) Makefile.in restart restart.sh \
+DISTFILES = $(SRCS) GNUmakefile Makefile.in restart restart.sh \
 	Minimal.db README.Minimal \
 	ChangeLog.txt README configure.in configure config.h.in \
-	MOOCodeSequences.txt AddingNewMOOTypes.txt aclocal.m4
+	MOOCodeSequences.txt AddingNewMOOTypes.txt aclocal.m4 \
+	HACKING \
+	version_opt_gen.pl version_options.h version_src.txt
 
 COBJS = $(CSRCS:.c=.o)
 
@@ -131,12 +133,14 @@ extension-gcrypt.o: extension-gcrypt.c
 
 dist.tar.Z:	$(DISTFILES)
 	rm -f version_number
-	grep "server_version = " version.c \
-		| sed -e 's/^.* = "//' -e 's/";//' > version_number
+	$(CPP) version.c \
+		| sed -e 's/^.*server_version *= *"\(.*\)" *; *$$/\1/;t a;d;:a;s/" \+"//g;s/+?_ad_hoc_??//' \
+		> version_number
 	rm -fr MOO-`cat version_number`
 	mkdir MOO-`cat version_number`
 	chmod 755 MOO-`cat version_number`
 	cp -pr $(DISTFILES) MOO-`cat version_number`
+	echo -e '#define VERSION_EXT "'`cat version_number | sed 's/^[^+]*//'`'"\n#define VERSION_SOURCE(DEF) DEF(vcs, "release")' > MOO-`cat version_number`/version_src.h
 	chmod u+w MOO-`cat version_number`/*
 	tar cvf - MOO-`cat version_number` | compress -c > dist.tar.Z.NEW
 	mv dist.tar.Z.NEW dist.tar.Z
