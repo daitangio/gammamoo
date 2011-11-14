@@ -2313,6 +2313,7 @@ Version 1.8.0p6
 -- Fixed bug where toint() accepted arguments that were not
    syntactically correct (e.g., "-+5", "- 3").  Report from tijmen@dse.nl.
 
+
 Version 1.8.1, 10 January 2000
 -- New maintainers: Ben Jackson (ben@ben.com) and Jay Carlson (nop@nop.com)
 -- No significant user-visible changes to server behavior.
@@ -2373,12 +2374,12 @@ Version 1.8.1, 10 January 2000
 -- Server hackers should read README.rX for more information on
    changes to server internals.
 
-Version 1.8.2
+Version 1.8.2, circa November 2006 (not released)
 Because of the long time with no release after 1.8.1, some distributors began
 to distribute 1.8.1 plus patches as 1.8.2.  To avoid confusion, we have opted
 to make the next official release version 1.8.3.
 
-Version 1.8.3, in progress
+Version 1.8.3, circa June 2008 (not released)
 -- SF bug #887464: fixed a bug in the server's startup processing, in which it
    scans for unknown built-in functions in active verbs (Thanks luke-jr and
    Gavin Lambert for reports and patches.)
@@ -2391,6 +2392,10 @@ Version 1.8.3, in progress
 -- SF bug #1500775: fixed two use-after-free bugs that could lead very rarely to
    calling the wrong functions during player connection (Thanks Garance Drosehn
    for the report and initial patch.)
+-- Added sync so that checkpoint file will not be lost by being unlinked
+   before being physically written to the disk
+-- Fixed uninitialized fileds that caused occasional weirdness in size accounting
+   for forked tasks and wrong line numbers in decompile
 **** Changes relevant to programmers / wizards:
 -- SF bug #227620: add_verb() now returns (positive integer) verb index
 -- bf_crypt() now passes salts longer than 2 characters to the underlying C
@@ -2412,13 +2417,13 @@ Version 1.8.3, in progress
           SUFFIX
           OUTPUTPREFIX
           OUTPUTSUFFIX
-       will be recognized on that connection.  Option value is a list 
+       will be recognized on that connection.  Option value is a list
        of strings, but set_connection_option() also accepts any numeric
        value, in which case all 5 intrinsic commands are enabled/disabled
        according to the value being true/false.
    (*) "disable-oob"
-       which, if set true, disables all out-of-band command processing 
-       on subsequent input lines, i.e., the server behaves for that 
+       which, if set true, disables all out-of-band command processing
+       on subsequent input lines, i.e., the server behaves for that
        connection as if OUT_OF_BAND_PREFIX had never been #defined.
        Out-of-band quoting (see below) is likewise disabled.
 -- If "disable-oob" is set false (as it is by default), then it is now the case
@@ -2449,6 +2454,140 @@ Version 1.8.3, in progress
    stdout and stderr are now closed if they are not being used.
    (Outside of emergency wizard mode, stdout is only used on an an NP_SINGLE
    server; stderr is only used if no logfile (-l) is specifed.)
+-- Added new compile option INPUT_APPLY_BACKSPACE to process
+   backspace/delete characters on nonbinary connections (patch 1571939)
 **** Changes relevant to server hackers:
 -- New call_verb2() accepts verb name that is a MOO string (ie, str_ref-able)
 -- str_hash() replaced with a faster (and better?) string hash function
+
+
+Version 1.8.4, in progress
+-- Fix FOR statement infinite loop when $maxint is the upper limit.
+-- Fix random($maxint) to return in correct range.
+-- Fix memory leak in flush_input.
+-- Fix memory leak in run_interpreter/save_handler_info
+   in the case where FINALLY returns/breaks/suspends.
+-- Fix random(m) to be uniformly distributed for m!=2^k
+   to allow for m > RAND_MAX
+-- Refactored bf_listinsert/bf_listappend to reduce refcounts
+
+**** Changes relevant to programmers / wizards:
+-- server_version() now takes an argument so that information
+   about the server build can be available in-db.
+-- $server_options.protect_<prop> now prevents non-wizard *writes*
+   and must be followed by load_server_options() to take effect
+-- New $server_options .max_list_concat and .max_string_concat
+   to limit the size of user-constructed lists and strings
+-- New $server_option .max_concat_catchable to govern whether
+   violating new size limits causes out-of-seconds or E_QUOTA error
+
+**** Changes significant to people compiling and running the server:
+-- Source/build information that is compiled into the server now 
+   comes from version_src.h.  Purpose and format of this file is
+   now described in version_src.txt.
+-- New GNUmakefile invokes optional ./version_hook which can be linked
+   to any script that will generate a version_src.h file from source
+   control information as appropriate.  (You can also have a static
+   version_src.h file that #defines the VERSION_* macros.)
+-- IGNORE_PROP_PROTECTED deprecated since no longer necessary
+-- New options DEFAULT_MAX_LIST_CONCAT, DEFAULT_MAX_STRING_CONCAT,
+   MIN_LIST_CONCAT_LIMIT, MIN_STRING_CONCAT_LIMIT to set defaults
+   and lower bounds for .max_list_concat and .max_string_concat
+
+**** Changes relevant to server hackers:
+-- Added HACKING as an index to the various server-hacking
+   documentation files scattered about the source directory.
+   (do we need a doc directory?)
+-- If you add or remove #defines from options.h, you should update
+   version_opt_gen.pl accordingly and rerun it to generate a new
+   version_options.h, which then populates the group returned
+   by server_version("options").
+-- Some prep work for 64-bit MOO currently isolated in numbers.c
+   (will need autoconf update to work properly)
+-- server_flag_option() now takes an explicit default argument
+-- Rename load_server_protect_flags() to
+   load_server_protect_function_flags()
+-- make_abort_pack(ABORT_KILL) replaces make_kill_pack()
+   builtin functions can now cause other kinds of aborts
+-- Added caching regime for server options other than 
+   .protect_<function>
+-- List/string API changes (prep for raising stream exceptions)
+   raw_bytes_to_binary -> stream_add_raw_bytes_to_binary
+   strsub -> stream_add_strsub
+   value_to_literal -> unparse_value
+   list2str -> stream_add_tostr
+-- New stream exception API to catch malloc failures
+
+Version X, in progress
+-- The disassemble() built-in function will now properly disassemble all
+   possible literal values. Formerly, FLOAT literals were not properly
+   disassembled.
+-- Trapped various error conditions formerly ignored.
+-- Fixed null pointer dereference when trying to dump an uninitialized command
+   history.
+-- Whenever the player flag is cleared on an object, or an object with the
+   player flag set is recycled, the server will now output a traceback to the
+   log.
+-- Enabled keepalive on TCP connections.
+
+**** Changes relevant to programmers / wizards:
+-- Setting binary mode immediately flushes the connection's buffer, if any
+-- $match_object() is called to lookup dobj and iobj (one at a time). If it
+   returns an OBJ type, the return value is used. Otherwise, the old internal
+   matching is used.
+   ********** Before upgrading an existing LambdaCore-based MOO to use this
+   ** NOTE ** version of the server, you should probably add at least a dummy
+   ********** $match_object verb (no code needed to get the old behaviour).
+-- Call $do_null_command() when there is a null input from a player
+-- $handle_uncaught_error() and $handle_task_timeout() are now called with an
+   additional argument, containing the full command entered that triggered the
+   exception.
+   ********** Before upgrading an existing LambdaCore-based MOO to use this
+   ** NOTE ** version of the server, you might need to edit your core verbs
+   ********** to at least ignore the new argument. Scattered assignments
+   without a dummy "extra arguments" catchall at the end will throw E_ARGS!
+-- random() now accepts either one or two arguments. If two, the first is
+   treated as the minimum random number and the second as the maximum.
+-- Wizards can create "network" connections entirely within the MOO using new
+   builtin functions: create_connection(OBJ destination-object[, INT print-messages]) and
+   create_connection_from(OBJ source-object, OBJ destination-object[, INT print-messages])
+-- Added new support for in-db definitions of "builtin" functions.
+   Unrecognized functions are checked for an implementation as $bf__FUNCNAME
+   They behave the same as C builtins, except:
+	-- there is an additional protect_core_function/bf_core_function
+	   check pair
+	-- it's possible to bypass the usual $bf_FUNCNAME by calling them
+	   directly
+	-- load_server_options() is not required before their protect_FUNCNAME
+	   property takes effect
+-- Added support for scattering in `for' statements.
+-- Added support for bitshift and bitwise operators:
+	X << Y	Bitshift left  operation
+	X >> Y	Bitshift right operation
+	X &. Y	Bitwise  AND   operation
+	X |. Y	Bitwise   OR   operation
+	X ^. Y	Bitwise  XOR   operation
+	~X	Bitwise  NOT   operation
+-- The File I/O extension has been merged (disabled by default). See
+   FileioDocs.txt for details, and options.h to enable it.
+-- Added support for the File I/O Logger, a special limited mode for
+   append-once logging.
+-- If the server is built with libgcrypt support, the builtin hashing functions
+   (binary_hash, string_hash, and value_hash) accept an optional second
+   argument, a string specifying which hash algorithm to use. For
+   compatibility, the default algorithm is MD5 (please note that MD5 is not
+   cryptographically secure).
+
+**** Changes significant to people compiling and running the server:
+-- Specific property names can be reserved, preventing them from being used by
+   new or renamed properties. By default, the "class" property is blocked to
+   ensure future WAIF compatibility.
+-- The `restart' and `restart.sh' scripts have been modified to use gzip
+   instead of the old `compress' program.
+-- The server can be (and is, by default) linked against libgcrypt for more
+   hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
+   this or cannot use libgcrypt for some reason.
+
+**** Changes relevant to server hackers:
+-- Makefile now uses gperf (3.0.1+) to generate keywords.c
+-- configure script is now generated with autoconf 2.13 or 2.5x+

@@ -270,6 +270,11 @@ free_expr(Expr * expr)
     case EXPR_MOD:
     case EXPR_AND:
     case EXPR_OR:
+    case EXPR_SHL:
+    case EXPR_SHR:
+    case EXPR_BAND:
+    case EXPR_BOR:
+    case EXPR_BXOR:
     case EXPR_EQ:
     case EXPR_NE:
     case EXPR_LT:
@@ -307,6 +312,7 @@ free_expr(Expr * expr)
 
     case EXPR_NEGATE:
     case EXPR_NOT:
+    case EXPR_BNOT:
 	free_expr(expr->e.expr);
 	break;
 

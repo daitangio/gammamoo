@@ -177,6 +177,21 @@ error_backtrace_list(const char *msg)
     return backtrace_list;
 }
 
+static Var
+activ_command_str(activation *activ)
+{
+    Stream *s = new_stream(0x10);
+    Var value;
+
+    stream_add_string(s, activ[0].verb);
+    stream_add_char(s, ' ');
+    stream_add_string(s, activ[0].rt_env[SLOT_ARGSTR].v.str);
+    value.type = TYPE_STR;
+    value.v.str = str_dup(stream_contents(s));
+    free_stream(s);
+    return value;
+}
+
 static enum error
 suspend_task(package p)
 {
@@ -198,12 +213,19 @@ suspend_task(package p)
 }
 
 static int raise_error(package p, enum outcome *outcome);
+static void abort_task(enum abort_reason reason);
 
 static int
 unwind_stack(Finally_Reason why, Var value, enum outcome *outcome)
 {
-    /* Returns true iff the entire stack was unwound and the interpreter
-     * should stop, in which case *outcome is the correct outcome to return. */
+    /* Returns true iff the interpreter should stop,
+     * in which case *outcome is set to the correct outcome to return.
+     * Interpreter stops either because it was blocked (OUTCOME_BLOCKED)
+     * or the entire stack was unwound (OUTCOME_DONE/OUTCOME_ABORTED)
+     *
+     * why==FIN_EXIT always returns false
+     * why==FIN_ABORT always returns true/OUTCOME_ABORTED
+     */
     Var code = (why == FIN_RAISE ? value.v.list[1] : zero);
 
     for (;;) {			/* loop over activations */
@@ -316,7 +338,10 @@ unwind_stack(Finally_Reason why, Var value, enum outcome *outcome)
 		    a->bi_func_data = p.u.call.data;
 		    return 0;
 		case BI_KILL:
-		    return unwind_stack(FIN_ABORT, zero, outcome);
+		    abort_task(p.u.ret.v.num);
+		    if (outcome)
+			*outcome = OUTCOME_ABORTED;
+		    return 1;
 		}
 	    } else {
 		/* Built-in functions receive zero as a `returned value' on
@@ -465,8 +490,9 @@ raise_error(package p, enum outcome *outcome)
 	value = new_list(4);
     } else {			/* uncaught exception */
 	why = FIN_UNCAUGHT;
-	value = new_list(5);
+	value = new_list(6);
 	value.v.list[5] = error_backtrace_list(p.u.raise.msg);
+	value.v.list[6] = activ_command_str(activ_stack);
 	handler_activ = 0;	/* get entire stack in list */
     }
     value.v.list[1] = p.u.raise.code;
@@ -485,20 +511,40 @@ raise_error(package p, enum outcome *outcome)
 }
 
 static void
-abort_task(int is_ticks)
+abort_task(enum abort_reason reason)
 {
     Var value;
-    const char *msg = (is_ticks ? "Task ran out of ticks"
-		       : "Task ran out of seconds");
+    const char *msg;
+    const char *htag;
 
-    value = new_list(3);
-    value.v.list[1].type = TYPE_STR;
-    value.v.list[1].v.str = str_dup(is_ticks ? "ticks" : "seconds");
-    value.v.list[2] = make_stack_list(activ_stack, 0, top_activ_stack, 1,
-				      root_activ_vector, 1);
-    value.v.list[3] = error_backtrace_list(msg);
-    save_handler_info("handle_task_timeout", value);
-    unwind_stack(FIN_ABORT, zero, 0);
+    switch(reason) {
+    default:
+	panic("Bad abort_reason");
+	/*NOTREACHED*/
+
+    case ABORT_TICKS:
+	msg  = "Task ran out of ticks";
+	htag = "ticks";
+	goto save_hinfo;
+
+    case ABORT_SECONDS:
+	msg = "Task ran out of seconds";
+	htag = "seconds";
+
+    save_hinfo:
+	value = new_list(4);
+	value.v.list[1].type = TYPE_STR;
+	value.v.list[1].v.str = str_dup(htag);
+	value.v.list[2] = make_stack_list(activ_stack, 0, top_activ_stack, 1,
+					  root_activ_vector, 1);
+	value.v.list[3] = error_backtrace_list(msg);
+	value.v.list[4] = activ_command_str(activ_stack);
+	save_handler_info("handle_task_timeout", value);
+	/* fall through */
+
+    case ABORT_KILL:
+	(void) unwind_stack(FIN_ABORT, zero, 0);
+    }
 }
 
 /**** activation manipulation ****/
@@ -586,10 +632,13 @@ call_verb2(Objid this, const char *vname, Var args, int do_pass)
     if (!valid(where))
 	return E_INVIND;
     h = db_find_callable_verb(where, vname);
+    h = db_dup_verb_handle(h);
     if (!h.ptr)
 	return E_VERBNF;
-    else if (!push_activation())
+    else if (!push_activation()) {
+	db_free_verb_handle(h);
 	return E_MAXREC;
+    }
 
     program = db_verb_program(h);
     RUN_ACTIV.prog = program_ref(program);
@@ -599,6 +648,8 @@ call_verb2(Objid this, const char *vname, Var args, int do_pass)
     RUN_ACTIV.verb = str_ref(vname);
     RUN_ACTIV.verbname = str_ref(db_verb_names(h));
     RUN_ACTIV.debug = (db_verb_flags(h) & VF_DEBUG);
+
+    db_free_verb_handle(h);
 
     alloc_rt_stack(&RUN_ACTIV, program->main_vector.max_stack);
     RUN_ACTIV.pc = 0;
@@ -640,59 +691,37 @@ call_verb2(Objid this, const char *vname, Var args, int do_pass)
     return E_NONE;
 }
 
-static int
-rangeset_check(int end, int from, int to)
+static enum error
+rangeset_check(Var base, Var inst, int from, int to)
 {
-    if (from > end + 1 || to < 0)
-	return 1;
-    return 0;
+    int blen;
+    int ilen;
+    int max;
+    if (base.type == TYPE_STR) {
+	blen = memo_strlen(base.v.str);
+	ilen = memo_strlen(inst.v.str);
+	max  = server_int_option_cached(SVO_MAX_STRING_CONCAT);
+    }
+    else {
+	blen = base.v.list[0].v.num;
+	ilen = inst.v.list[0].v.num;
+	max  = server_int_option_cached(SVO_MAX_LIST_CONCAT);
+    }
+
+    if (from > blen + 1 || to < 0)
+	return E_RANGE;
+
+    if (max < (((from > 1) ? from - 1 : 0) + ilen
+	       + ((blen > to) ? blen - to : 0)))
+	return E_QUOTA;
+
+    return E_NONE;
 }
 
 #ifdef IGNORE_PROP_PROTECTED
 #define bi_prop_protected(prop, progr) (0)
 #else
-static int
-bi_prop_protected(enum bi_prop prop, Objid progr)
-{
-    const char *pname = 0;	/* silence warning */
-
-    if (is_wizard(progr))
-	return 0;
-
-    switch (prop) {
-    case BP_NAME:
-	pname = "protect_name";
-	break;
-    case BP_OWNER:
-	pname = "protect_owner";
-	break;
-    case BP_PROGRAMMER:
-	pname = "protect_programmer";
-	break;
-    case BP_WIZARD:
-	pname = "protect_wizard";
-	break;
-    case BP_R:
-	pname = "protect_r";
-	break;
-    case BP_W:
-	pname = "protect_w";
-	break;
-    case BP_F:
-	pname = "protect_f";
-	break;
-    case BP_LOCATION:
-	pname = "protect_location";
-	break;
-    case BP_CONTENTS:
-	pname = "protect_contents";
-	break;
-    default:
-	panic("Can't happen in BI_PROP_PROTECTED!");
-    }
-
-    return server_flag_option(pname);
-}
+#define bi_prop_protected(prop, progr) ((!is_wizard(progr)) && server_flag_option_cached(prop))
 #endif				/* IGNORE_PROP_PROTECTED */
 
 /** 
@@ -776,6 +805,21 @@ do {    						    	\
     PUSH(error_var);						\
 } while (0)
 
+#define PUSH_ERROR_UNLESS_QUOTA(the_err)			\
+do {								\
+    if (E_QUOTA == (the_err) &&					\
+        !server_flag_option_cached(SVO_MAX_CONCAT_CATCHABLE))	\
+    {								\
+        /* simulate out-of-seconds abort resulting */		\
+	/* from monster malloc+copy taking too long */		\
+	STORE_STATE_VARIABLES();				\
+	abort_task(ABORT_SECONDS);				\
+	return OUTCOME_ABORTED;					\
+    }								\
+    else							\
+	PUSH_ERROR(the_err);					\
+} while (0)
+
 #define JUMP(label)     (bv = bc.vector + label)
 
 /* end of major run() macros */
@@ -794,12 +838,12 @@ do {    						    	\
 	if (COUNT_TICK(op)) {
 	    if (--ticks_remaining <= 0) {
 		STORE_STATE_VARIABLES();
-		abort_task(1);
+		abort_task(ABORT_TICKS);
 		return OUTCOME_ABORTED;
 	    }
 	    if (task_timed_out) {
 		STORE_STATE_VARIABLES();
-		abort_task(0);
+		abort_task(ABORT_SECONDS);
 		return OUTCOME_ABORTED;
 	    }
 	}
@@ -881,11 +925,23 @@ do {    						    	\
 		} else {
 		    free_var(RUN_ACTIV.rt_env[id]);
 		    RUN_ACTIV.rt_env[id] = var_ref(from);
-		    if (to.type == TYPE_INT)
-			from.v.num++;
-		    else
-			from.v.obj++;
-		    NEXT_TOP_RT_VALUE = from;
+		    if (to.type == TYPE_INT) {
+			if (from.v.num < MAXINT) {
+			    from.v.num++;
+			    NEXT_TOP_RT_VALUE = from;
+			} else {
+			    to.v.num--;
+			    TOP_RT_VALUE = to;
+			}
+		    } else {
+			if (from.v.obj < MAXOBJ) {
+			    from.v.obj++;
+			    NEXT_TOP_RT_VALUE = from;
+			} else {
+			    to.v.obj--;
+			    TOP_RT_VALUE = to;
+			}
+		    }
 		}
 	    }
 	    break;
@@ -923,13 +979,20 @@ do {    						    	\
 	case OP_LIST_ADD_TAIL:
 	    {
 		Var tail, list;
+		enum error e = E_NONE;
 
 		tail = POP();	/* whatever */
 		list = POP();	/* should be list */
-		if (list.type != TYPE_LIST) {
+		if (list.type != TYPE_LIST)
+		    e = E_TYPE;
+		else if (server_int_option_cached(SVO_MAX_LIST_CONCAT)
+			 <= list.v.list[0].v.num)
+		    e = E_QUOTA;
+
+		if (e != E_NONE) {
 		    free_var(list);
 		    free_var(tail);
-		    PUSH_ERROR(E_TYPE);
+		    PUSH_ERROR_UNLESS_QUOTA(e);
 		} else
 		    PUSH(listappend(list, tail));
 	    }
@@ -938,13 +1001,20 @@ do {    						    	\
 	case OP_LIST_APPEND:
 	    {
 		Var tail, list;
+		enum error e = E_NONE;
 
 		tail = POP();	/* second, should be list */
 		list = POP();	/* first, should be list */
-		if (tail.type != TYPE_LIST || list.type != TYPE_LIST) {
+		if (tail.type != TYPE_LIST || list.type != TYPE_LIST)
+		    e = E_TYPE;
+		else if (server_int_option_cached(SVO_MAX_LIST_CONCAT)
+			 < list.v.list[0].v.num + tail.v.list[0].v.num)
+		    e = E_QUOTA;
+
+		if (e != E_NONE) {
 		    free_var(tail);
 		    free_var(list);
-		    PUSH_ERROR(E_TYPE);
+		    PUSH_ERROR_UNLESS_QUOTA(e);
 		} else
 		    PUSH(listconcat(list, tail));
 	    }
@@ -1197,12 +1267,19 @@ do {    						    	\
 		else if (lhs.type == TYPE_STR && rhs.type == TYPE_STR) {
 		    char *str;
 		    int llen = memo_strlen(lhs.v.str);
+		    int flen = llen + memo_strlen(rhs.v.str);
 
-		    str = mymalloc(llen + memo_strlen(rhs.v.str) + 1, M_STRING);
-		    strcpy(str, lhs.v.str);
-		    strcpy(str + llen, rhs.v.str);
-		    ans.type = TYPE_STR;
-		    ans.v.str = str;
+		    if (server_int_option_cached(SVO_MAX_STRING_CONCAT)
+			< flen) {
+			ans.type = TYPE_ERR;
+			ans.v.err = E_QUOTA;
+		    } else {
+			str = mymalloc(flen + 1, M_STRING);
+			strcpy(str, lhs.v.str);
+			strcpy(str + llen, rhs.v.str);
+			ans.type = TYPE_STR;
+			ans.v.str = str;
+		    }
 		} else {
 		    ans.type = TYPE_ERR;
 		    ans.v.err = E_TYPE;
@@ -1211,7 +1288,7 @@ do {    						    	\
 		free_var(lhs);
 
 		if (ans.type == TYPE_ERR)
-		    PUSH_ERROR(ans.v.err);
+		    PUSH_ERROR_UNLESS_QUOTA(ans.v.err);
 		else
 		    PUSH(ans);
 	    }
@@ -1471,9 +1548,10 @@ do {    						    	\
 			case BP_NAME:
 			    if (rhs.type != TYPE_STR)
 				err = E_TYPE;
-			    else if (!is_wizard(progr)
-				     && (is_user(obj.v.obj)
-				 || progr != db_object_owner(obj.v.obj)))
+			    else if (!is_wizard(progr) &&
+				     (is_user(obj.v.obj) ||
+				      bi_prop_protected(h.built_in, progr) ||
+				      progr != db_object_owner(obj.v.obj)))
 				err = E_PERM;
 			    break;
 			case BP_OWNER:
@@ -1505,8 +1583,9 @@ do {    						    	\
 			case BP_R:
 			case BP_W:
 			case BP_F:
-			    if (progr != db_object_owner(obj.v.obj)
-				&& !is_wizard(progr))
+			    if (!is_wizard(progr) &&
+				(bi_prop_protected(h.built_in, progr) ||
+				 progr != db_object_owner(obj.v.obj)))
 				err = E_PERM;
 			    break;
 			case BP_LOCATION:
@@ -1666,7 +1745,7 @@ do {    						    	\
 			break;
 		    case BI_KILL:
 			STORE_STATE_VARIABLES();
-			unwind_stack(FIN_ABORT, zero, 0);
+			abort_task(p.u.ret.v.num);
 			return OUTCOME_ABORTED;
 			/* NOTREACHED */
 		    }
@@ -1684,6 +1763,7 @@ do {    						    	\
 		case EOP_RANGESET:
 		    {
 			Var base, from, to, value;
+			enum error e;
 
 			value = POP();	/* rhs value (list or string) */
 			to = POP();	/* end of range (integer) */
@@ -1699,15 +1779,12 @@ do {    						    	\
 			    free_var(from);
 			    free_var(value);
 			    PUSH_ERROR(E_TYPE);
-			} else if (rangeset_check(base.type == TYPE_STR
-						  ? memo_strlen(base.v.str)
-						  : base.v.list[0].v.num,
-						  from.v.num, to.v.num)) {
+			} else if (E_NONE != (e = rangeset_check(base, value, from.v.num, to.v.num))) {
 			    free_var(base);
 			    free_var(to);
 			    free_var(from);
 			    free_var(value);
-			    PUSH_ERROR(E_RANGE);
+			    PUSH_ERROR_UNLESS_QUOTA(e);
 			} else if (base.type == TYPE_LIST)
 			    PUSH(listrangeset(base, from.v.num, to.v.num, value));
 			else	/* TYPE_STR */
@@ -1734,18 +1811,61 @@ do {    						    	\
 		    break;
 
 		case EOP_EXP:
+		case EOP_SHL:
+		case EOP_SHR:
+		case EOP_BAND:
+		case EOP_BOR:
+		case EOP_BXOR:
 		    {
 			Var lhs, rhs, ans;
 
 			rhs = POP();
 			lhs = POP();
-			ans = do_power(lhs, rhs);
+			switch (eop) {
+			case EOP_EXP:
+			    ans = do_power(lhs, rhs);
+			    break;
+			case EOP_SHL:
+			    ans = do_bitshift_left(lhs, rhs);
+			    break;
+			case EOP_SHR:
+			    ans = do_bitshift_right(lhs, rhs);
+			    break;
+			case EOP_BAND:
+			    ans = do_bitwise_and(lhs, rhs);
+			    break;
+			case EOP_BOR:
+			    ans = do_bitwise_or(lhs, rhs);
+			    break;
+			case EOP_BXOR:
+			    ans = do_bitwise_xor(lhs, rhs);
+			    break;
+			default:
+			    errlog("RUN: Impossible extended opcode in binary"
+				   " ops: %d\n", op);
+			}
 			free_var(lhs);
 			free_var(rhs);
 			if (ans.type == TYPE_ERR)
 			    PUSH_ERROR(ans.v.err);
 			else
 			    PUSH(ans);
+		    }
+		    break;
+
+		case EOP_BNOT:
+		    {
+			Var arg, ans;
+
+			arg = POP();
+			if (arg.type != TYPE_INT) {
+			    PUSH_ERROR(E_TYPE);
+			} else {
+			    ans.type = TYPE_INT;
+			    ans.v.num = ~arg.v.num;
+			    PUSH(ans);
+			}
+			free_var(arg);
 		    }
 		    break;
 
@@ -1923,7 +2043,7 @@ do {    						    	\
 			v.v.list[2].type = TYPE_INT;
 			v.v.list[2].v.num = READ_BYTES(bv, bc.numbytes_label);
 			STORE_STATE_VARIABLES();
-			unwind_stack(FIN_EXIT, v, 0);
+			(void) unwind_stack(FIN_EXIT, v, 0);
 			LOAD_STATE_VARIABLES();
 		    }
 		    break;
@@ -2120,6 +2240,7 @@ run_interpreter(char raise, enum error e,
        suspend().) */
 {
     enum outcome ret;
+    Var args;
 
     setup_task_execution_limits(is_fg ? server_int_option("fg_seconds",
 						      DEFAULT_FG_SECONDS)
@@ -2130,25 +2251,28 @@ run_interpreter(char raise, enum error e,
 				: server_int_option("bg_ticks",
 						    DEFAULT_BG_TICKS));
 
+    /* handler_verb_* is garbage/unreferenced outside of run()
+     * and this is the only place run() is called. */
     handler_verb_args = zero;
     handler_verb_name = 0;
     interpreter_is_running = 1;
     ret = run(raise, e, result);
     interpreter_is_running = 0;
-    task_timed_out = 0;
+    args = handler_verb_args;
+
     cancel_timer(task_alarm_id);
+    task_timed_out = 0;
 
     if (ret == OUTCOME_ABORTED && handler_verb_name) {
 	db_verb_handle h;
-        enum outcome hret;
-	Var args, handled, traceback;
+	enum outcome hret;
+	Var handled, traceback;
 	int i;
 
-	args = handler_verb_args;
 	h = db_find_callable_verb(SYSTEM_OBJECT, handler_verb_name);
 	if (do_db_tracebacks && h.ptr) {
 	    hret = do_server_verb_task(SYSTEM_OBJECT, handler_verb_name,
-				       var_ref(handler_verb_args), h,
+				       var_ref(args), h,
 				       activ_stack[0].player, "", &handled,
 				       0/*no-traceback*/);
 	    if ((hret == OUTCOME_DONE && is_true(handled))
@@ -2159,11 +2283,12 @@ run_interpreter(char raise, enum error e,
 	    }
 	}
 	i = args.v.list[0].v.num;
-	traceback = args.v.list[i];	/* traceback is always the last argument */
+	traceback = args.v.list[i - 1];	/* traceback is always the
+	                                   second-to-last argument */
 	for (i = 1; i <= traceback.v.list[0].v.num; i++)
 	    notify(activ_stack[0].player, traceback.v.list[i].v.str);
-	free_var(args);
     }
+    free_var(args);
     return ret;
 }
 
@@ -2405,9 +2530,14 @@ bf_call_function(Var arglist, Byte next, void *vdata, Objid progr)
 
 	fnum = number_func_by_name(fname);
 	if (fnum == FUNC_NOT_FOUND) {
+	    if (is_core_function(fname)) {
+		fnum = core_function_num;
+		p = call_bi_func(fnum, arglist, next, progr, vdata);
+	    } else {
 	    p = make_raise_pack(E_INVARG, "Unknown built-in function",
 				var_ref(arglist.v.list[1]));
 	    free_var(arglist);
+	    }
 	} else {
 	    arglist = listdelete(arglist, 1);
 	    p = call_bi_func(fnum, arglist, next, progr, vdata);
@@ -2464,7 +2594,7 @@ bf_raise(Var arglist, Byte next, void *vdata, Objid progr)
     Var code = var_ref(arglist.v.list[1]);
     const char *msg = (nargs >= 2
 		       ? str_ref(arglist.v.list[2].v.str)
-		       : str_dup(value2str(code)));
+		       : value2str(code));
     Var value;
 
     value = (nargs >= 3 ? var_ref(arglist.v.list[3]) : zero);
@@ -2822,7 +2952,7 @@ read_activ(activation * a, int which_vector)
     else if (dbio_scanf("language version %u\n", &v) != 1) {
 	errlog("READ_ACTIV: Malformed language version\n");
 	return 0;
-    } else if (version = v, !check_version(version)) {
+    } else if (version = v, !check_db_version(version)) {
 	errlog("READ_ACTIV: Unrecognized language version: %d\n",
 	       version);
 	return 0;

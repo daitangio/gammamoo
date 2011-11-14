@@ -71,6 +71,8 @@ unparse_error(enum error e)
 	return "Resource limit exceeded";
     case E_FLOAT:
 	return "Floating-point arithmetic error";
+    case E_FILE:
+	return "File error";
     }
 
     return "Unknown Error";
@@ -112,6 +114,8 @@ error_name(enum error e)
 	return "E_QUOTA";
     case E_FLOAT:
 	return "E_FLOAT";
+    case E_FILE:
+	return "E_FILE";
     }
 
     return "E_?";
@@ -131,37 +135,45 @@ static struct prec prec_table[] =
     {EXPR_OR, 3},
     {EXPR_AND, 3},
 
-    {EXPR_EQ, 4},
-    {EXPR_NE, 4},
-    {EXPR_LT, 4},
-    {EXPR_LE, 4},
-    {EXPR_GT, 4},
-    {EXPR_GE, 4},
-    {EXPR_IN, 4},
+    {EXPR_BAND, 4},
+    {EXPR_BOR, 4},
+    {EXPR_BXOR, 4},
 
-    {EXPR_PLUS, 5},
-    {EXPR_MINUS, 5},
+    {EXPR_EQ, 5},
+    {EXPR_NE, 5},
+    {EXPR_LT, 5},
+    {EXPR_LE, 5},
+    {EXPR_GT, 5},
+    {EXPR_GE, 5},
+    {EXPR_IN, 5},
 
-    {EXPR_TIMES, 6},
-    {EXPR_DIVIDE, 6},
-    {EXPR_MOD, 6},
+    {EXPR_SHL, 6},
+    {EXPR_SHR, 6},
 
-    {EXPR_EXP, 7},
+    {EXPR_PLUS, 7},
+    {EXPR_MINUS, 7},
 
-    {EXPR_NEGATE, 8},
-    {EXPR_NOT, 8},
+    {EXPR_TIMES, 8},
+    {EXPR_DIVIDE, 8},
+    {EXPR_MOD, 8},
 
-    {EXPR_PROP, 9},
-    {EXPR_VERB, 9},
-    {EXPR_INDEX, 9},
-    {EXPR_RANGE, 9},
+    {EXPR_EXP, 9},
 
-    {EXPR_VAR, 10},
-    {EXPR_ID, 10},
-    {EXPR_LIST, 10},
-    {EXPR_CALL, 10},
-    {EXPR_LENGTH, 10},
-    {EXPR_CATCH, 10}
+    {EXPR_NEGATE, 10},
+    {EXPR_NOT, 10},
+    {EXPR_BNOT, 10},
+
+    {EXPR_PROP, 11},
+    {EXPR_VERB, 11},
+    {EXPR_INDEX, 11},
+    {EXPR_RANGE, 11},
+
+    {EXPR_VAR, 12},
+    {EXPR_ID, 12},
+    {EXPR_LIST, 12},
+    {EXPR_CALL, 12},
+    {EXPR_LENGTH, 12},
+    {EXPR_CATCH, 12}
 };
 
 static int expr_prec[SizeOf_Expr_Kind];
@@ -176,6 +188,9 @@ static struct binop binop_table[] =
     {EXPR_IN, " in "},
     {EXPR_OR, " || "},
     {EXPR_AND, " && "},
+    {EXPR_BAND, " &. "},
+    {EXPR_BOR, " |. "},
+    {EXPR_BXOR, " ^. "},
     {EXPR_EQ, " == "},
     {EXPR_NE, " != "},
     {EXPR_LT, " < "},
@@ -188,6 +203,8 @@ static struct binop binop_table[] =
     {EXPR_DIVIDE, " / "},
     {EXPR_MOD, " % "},
     {EXPR_EXP, " ^ "},
+    {EXPR_SHL, " << "},
+    {EXPR_SHR, " >> "},
 };
 
 static const char *binop_string[SizeOf_Expr_Kind];
@@ -305,12 +322,40 @@ unparse_stmt_cond(Stream * str, struct Stmt_Cond cond, int indent)
 static void
 unparse_stmt_list(Stream * str, struct Stmt_List list, int indent)
 {
-    stream_printf(str, "for %s in (", prog->var_names[list.id]);
+    const char *vname = prog->var_names[list.id];
+    Stmt *body = list.body;
+
+    stream_add_string(str, "for ");
+    if (vname[0] == '@' &&
+     body->kind == STMT_EXPR &&
+     body->s.expr->kind == EXPR_ASGN &&
+     body->s.expr->e.bin.rhs->kind == EXPR_ID &&
+     body->s.expr->e.bin.rhs->e.id == list.id &&
+     body->s.expr->e.bin.lhs->kind == EXPR_SCATTER) {
+	unparse_expr(str, body->s.expr->e.bin.lhs);
+	/* NOTE: if programmers are ever allowed to put '@' in their own
+	 *       break/continue statements, this could protentially lead to a
+	 *       decompile-then-recompile inconsistency. For example:
+	 *         for {a, b} in (c)
+	 *           for a in (a)        would continue the *outer* loop
+	 *             continue @a;  <-- initially, but decompile as "continue
+	 *           endfor              a" and then recompile to continue the
+	 *         endfor                inner loop instead
+	 *       This could also happen without extending the syntax, by
+	 *       allowing programmers to modify the bytecode other ways (eg,
+	 *       an assembler/debugger).
+	 */
+	prog->var_names[list.id] = &prog->var_names[list.id][1];
+	body = body->next;
+    } else
+	stream_add_string(str, vname);
+    stream_add_string(str, " in (");
     unparse_expr(str, list.expr);
     stream_add_char(str, ')');
     output(str);
-    unparse_stmt(list.body, indent + 2);
+    unparse_stmt(body, indent + 2);
     indent_stmt(str, indent);
+    prog->var_names[list.id] = vname;
     stream_add_string(str, "endfor");
     output(str);
 }
@@ -563,6 +608,9 @@ unparse_expr(Stream * str, Expr * expr)
     case EXPR_MOD:
     case EXPR_AND:
     case EXPR_OR:
+    case EXPR_BAND:
+    case EXPR_BOR:
+    case EXPR_BXOR:
     case EXPR_EQ:
     case EXPR_NE:
     case EXPR_LT:
@@ -570,6 +618,8 @@ unparse_expr(Stream * str, Expr * expr)
     case EXPR_LE:
     case EXPR_GE:
     case EXPR_IN:
+    case EXPR_SHL:
+    case EXPR_SHR:
 	bracket_lt(str, expr->kind, expr->e.bin.lhs);
 	stream_add_string(str, binop_string[expr->kind]);
 	bracket_le(str, expr->kind, expr->e.bin.rhs);
@@ -600,8 +650,13 @@ unparse_expr(Stream * str, Expr * expr)
 	bracket_lt(str, EXPR_NOT, expr->e.expr);
 	break;
 
+    case EXPR_BNOT:
+	stream_add_char(str, '~');
+	bracket_lt(str, EXPR_BNOT, expr->e.expr);
+	break;
+
     case EXPR_VAR:
-	stream_add_string(str, value_to_literal(expr->e.var));
+	unparse_value(str, expr->e.var);
 	break;
 
     case EXPR_ASGN:
@@ -611,11 +666,20 @@ unparse_expr(Stream * str, Expr * expr)
 	break;
 
     case EXPR_CALL:
+    {
+	Arg_List *args = expr->e.call.args;
+
+	if (expr->e.call.func == core_function_num) {
+	    stream_add_string(str, args->expr->e.var.v.str);
+	    args = args->next;
+	} else {
 	stream_add_string(str, name_func_by_num(expr->e.call.func));
+	}
 	stream_add_char(str, '(');
-	unparse_arglist(str, expr->e.call.args);
+	unparse_arglist(str, args);
 	stream_add_char(str, ')');
 	break;
+    }
 
     case EXPR_ID:
 	stream_add_string(str, prog->var_names[expr->e.id]);

@@ -214,6 +214,35 @@
 #define MAX_QUEUED_INPUT	MAX_QUEUED_OUTPUT
 #define DEFAULT_CONNECT_TIMEOUT	300
 
+ /******************************************************************************
+ * The File I/O extension adds several new builtins that allow the
+ * manipulation of files from MOO code. Please read FileioDocs.txt for more
+ * details.
+ *
+ * *** THINK VERY HARD BEFORE ENABLING THIS EXTENSION ***
+ * Granting MOO code direct access to files opens a hole in the otherwise
+ * fairly good wall that the LambdaMOO server puts up between the OS and
+ * the database.  The extension contains the risk as much as possible by
+ * restricting where files can be opened and allowing the new builtins to
+ * be called by wizard permissions only.  It is still possible execute
+ * various forms denial of service attacks, but the MOO server allows
+ * this form of attack as well.
+ */
+
+/* #define FILE_IO 1 */
+
+#define FILE_IO_MAX_FILES 256
+#define FILE_SUBDIR "files/"
+
+#define FILE_IO_BUFFER_LENGTH 4096
+
+/* #define FILE_IO_LOGGER 1 */
+#define FILE_IO_LOGGER_SUBDIR "logs/"
+#define FILE_IO_LOGGER_UMASK
+#define FILE_IO_LOGGER_FORMAT "%s_%d_%s.log"
+#define FILE_IO_LOGGER_FORMAT_VARS time, counter, pathname
+#define FILE_IO_LOGGER_FORMAT_TIME "%s"
+
 /******************************************************************************
  * On connections that have not been set to binary mode, the server normally
  * discards incoming characters that are not printable ASCII, including
@@ -222,6 +251,16 @@
  * from the input stream.  (Comment this out to restore pre-1.8.3 behavior)
  */
 #define INPUT_APPLY_BACKSPACE
+
+/******************************************************************************
+ * If you have libgcrypt, the MOO server can support more advanced hashing
+ * algorithms for the builtin hashing functions (binary_hash, string_hash, and
+ * value_hash). Hashing functions should be passed an algorithm name as their
+ * second parameter, or the backward-compatible default of MD5 will be used
+ * (please note that MD5 is not cryptographically secure).
+ * (Comment this out to disable libgcrypt support)
+ */
+#define MOO_GCRYPT
 
 /******************************************************************************
  * The server maintains a cache of the most recently used patterns from calls
@@ -233,14 +272,16 @@
 #define PATTERN_CACHE_SIZE	20
 
 /******************************************************************************
- * If you don't plan on using protecting built-in properties (like
- * .name and .location), define IGNORE_PROP_PROTECTED.  The extra
- * property lookups on every reference to a built-in property are
- * expensive.
+ * Prior to 1.8.4 property lookups were required on every reference to a
+ * built-in property due to the possibility of that property being protected.
+ * This used to be expensive.  IGNORE_PROP_PROTECTED thus existed to entirely
+ * disable the use of $server_options.protect_<property> for those who
+ * did not actually make use of protected builtin properties.  Since all
+ * protect_<property> options are now cached, this #define is now deprecated.
  ****************************************************************************** 
  */
 
-#define IGNORE_PROP_PROTECTED
+/* #define IGNORE_PROP_PROTECTED */
 
 /******************************************************************************
  * The code generator can now recognize situations where the code will not
@@ -298,6 +339,14 @@
 /* #define MEMO_STRLEN */
 
 /******************************************************************************
+ * Define this option to prevent certain property names from being added on
+ * objects. Useful to ensure forward compatibility.
+ * "class" is used by WAIFs
+ ******************************************************************************
+ */
+#define RESERVED_PROPERTIES "class"
+
+/******************************************************************************
  * This package comes with a copy of the implementation of malloc() from GNU
  * Emacs.  This is a very nice and reasonably portable implementation, but some
  * systems, notably the NeXT machine, won't allow programs to provide their own
@@ -317,6 +366,38 @@
 
 /* #define USE_GNU_MALLOC */
 
+/******************************************************************************
+ * DEFAULT_MAX_LIST_CONCAT,   if set to a postive value, is the length
+ *                            of the largest constructible list.
+ * DEFAULT_MAX_STRING_CONCAT, if set to a postive value, is the length
+ *                            of the largest constructible string.
+ * Limits on "constructible" values apply to values built by concatenation,
+ * splicing, subrange assignment and various builtin functions.
+ * If defined in the database, $server_options.max_list_concat and
+ * and $server_options.max_string_concat override these defaults.
+ * A zero value disables limit checking.
+ *
+ * $server_options.max_concat_catchable, if defined, causes an E_QUOTA error
+ * to be raised when an overly-large value is spotted.  Otherwise, the task
+ * is aborted as if it ran out of seconds (see DEFAULT_FG_SECONDS),
+ * which was the original behavior in this situation (i.e., if we
+ * were lucky enough to avoid a server memory allocation panic).
+ ******************************************************************************
+ */
+
+#define DEFAULT_MAX_LIST_CONCAT    4194302
+#define DEFAULT_MAX_STRING_CONCAT 33554423
+
+/* In order to avoid weirdness from these limits being set too small,
+ * we impose the following (arbitrary) respective minimum values.
+ * That is, a positive value for $server_options.max_list_concat that
+ * is less than MIN_LIST_CONCAT_LIMIT will be silently increased, and
+ * likewise for the string limit.
+ */
+#define MIN_LIST_CONCAT_LIMIT   1022
+#define MIN_STRING_CONCAT_LIMIT 1015
+
+
 /*****************************************************************************
  ********** You shouldn't need to change anything below this point. **********
  *****************************************************************************/
@@ -326,6 +407,13 @@
 #endif
 #ifndef OUT_OF_BAND_QUOTE_PREFIX
 #define OUT_OF_BAND_QUOTE_PREFIX ""
+#endif
+
+#if DEFAULT_MAX_LIST_CONCAT < MIN_LIST_CONCAT_LIMIT
+#error DEFAULT_MAX_LIST_CONCAT < MIN_LIST_CONCAT_LIMIT ??
+#endif
+#if DEFAULT_MAX_STRING_CONCAT < MIN_STRING_CONCAT_LIMIT
+#error DEFAULT_MAX_STRING_CONCAT < MIN_STRING_CONCAT_LIMIT ??
 #endif
 
 #if PATTERN_CACHE_SIZE < 1

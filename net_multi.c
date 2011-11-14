@@ -20,6 +20,7 @@
 #include "my-fcntl.h"
 #include "my-ioctl.h"
 #include "my-signal.h"
+#include "my-socket.h"
 #include "my-stdio.h"
 #include "my-stdlib.h"
 #include "my-string.h"
@@ -274,7 +275,7 @@ pull_input(nhandle * h)
 
     if ((count = read(h->rfd, ptr, sizeof(buffer) - h->excess_utf_count)) > 0) {
 	if (h->binary) {
-	    stream_add_string(s, raw_bytes_to_binary(buffer, count));
+	    stream_add_raw_bytes_to_binary(s, buffer, count);
 	    server_receive_line(h->shandle, reset_stream(s));
 	    h->last_input_was_CR = 0;
             h->excess_utf_count = 0;
@@ -282,16 +283,32 @@ pull_input(nhandle * h)
 	    for (ptr = buffer, end = buffer + count; ptr < end && ptr + clearance_utf(*ptr) <= end;) {
 		int c = get_utf(&ptr);
 
-		if (my_is_printable(c))
-		    stream_add_utf(s, c);
-#ifdef INPUT_APPLY_BACKSPACE
-		else if (c == 0x08 || c == 0x7F)
-		    stream_delete_utf(s);
-#endif
-		else if (c == '\r' || (c == '\n' && !h->last_input_was_CR))
-		    server_receive_line(h->shandle, reset_stream(s));
+		if (c == '\r' || (c == '\n' && !h->last_input_was_CR)) {
+		    int fcount = stream_length(s);
+		    char *fptr = reset_stream(s);
+		    Stream *fs = new_stream(count + 1);
+		    int i;
 
-		h->last_input_was_CR = (c == '\r');
+		    h->last_input_was_CR = (c == '\r');
+		    for (i = 0; i < fcount; ++i) {
+			c = fptr[i];
+
+			if (my_is_printable(c))
+			    stream_add_utf(fs, c);
+#ifdef INPUT_APPLY_BACKSPACE
+			else if (c == 0x08 || c == 0x7F)
+			    stream_delete_utf(fs);
+#endif
+		    }
+		    server_receive_line(h->shandle, stream_contents(fs));
+		    free_stream(fs);
+		}
+		else if (c == '\n')
+		    h->last_input_was_CR = 0;
+		else {
+		    stream_add_char(s, c);
+		    h->last_input_was_CR = 0;
+		}
 	    }
             if (ptr < end)
             {
@@ -637,6 +654,18 @@ network_set_connection_binary(network_handle nh, int do_binary)
     nhandle *h = nh.ptr;
 
     h->binary = do_binary;
+
+    if (do_binary) {
+	int count = stream_length(h->input);
+
+	if (count) {
+	    Stream *s = new_stream(count + 1);
+	    stream_add_raw_bytes_to_binary(s, reset_stream(h->input), count);
+	    server_receive_line(h->shandle, stream_contents(s));
+	    h->last_input_was_CR = 0;
+	    free_stream(s);
+	}
+    }
 }
 
 #if NETWORK_PROTOCOL == NP_LOCAL
@@ -695,6 +724,43 @@ network_open_connection(Var arglist, server_listener sl)
     return e;
 }
 #endif
+
+enum error
+network_create_connection(server_listener from, Objid fromoid, server_listener to, Objid tooid)
+{
+#ifdef HAVE_SOCKETPAIR
+    int fd[2];
+    const char *from_name, *to_name;
+    Var tmpvar;
+    nhandle *h;
+    network_handle nh;
+    Stream *s = new_stream(8);
+
+    if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fd))
+	return E_QUOTA;
+
+    tmpvar.type = TYPE_OBJ;
+    tmpvar.v.obj = fromoid;
+    unparse_value(s, tmpvar);
+    from_name = str_dup(reset_stream(s));
+    tmpvar.v.obj = tooid;
+    unparse_value(s, tmpvar);
+    to_name = str_dup(stream_contents(s));
+    free_stream(s);
+
+    nh.ptr = h = new_nhandle(fd[0], fd[0], to_name, from_name, 0);
+    h->shandle = server_new_connection(to, nh, 0);
+    nh.ptr = h = new_nhandle(fd[1], fd[1], from_name, to_name, 1);
+    h->shandle = server_new_connection(from, nh, 1);
+
+    free_str(from_name);
+    free_str(to_name);
+
+    return E_NONE;
+#else
+    return E_VERBNF;
+#endif
+}
 
 void
 network_close(network_handle h)

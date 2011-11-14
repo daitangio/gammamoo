@@ -52,19 +52,21 @@ static DB_Version	language_version;
 static void	error(const char *, const char *);
 static void	warning(const char *, const char *);
 static int	find_id(char *name);
+static const char *get_name_from_id(int);
 static void	yyerror(const char *s);
 static int	yylex(void);
 static Scatter *scatter_from_arglist(Arg_List *);
 static Scatter *add_scatter_item(Scatter *, Scatter *);
 static void	vet_scatter(Scatter *);
 static void	push_loop_name(const char *);
+static void	push_loop_name_with_id(const char *, int);
 static void	pop_loop_name(void);
 static void	suspend_loop_scope(void);
 static void	resume_loop_scope(void);
 
 enum loop_exit_kind { LOOP_BREAK, LOOP_CONTINUE };
 
-static void	check_loop_name(const char *, enum loop_exit_kind);
+static int	check_loop_name(char *, enum loop_exit_kind);
 %}
 
 %union {
@@ -88,7 +90,7 @@ static void	check_loop_name(const char *, enum loop_exit_kind);
 %type   <args>   arglist ne_arglist codes
 %type	<except> except excepts
 %type	<string> opt_id
-%type	<scatter> scatter scatter_item
+%type	<scatter> scatter_any scatter scatter_item
 
 %token  <chr> tCHR
 %token	<integer> tINTEGER
@@ -104,11 +106,13 @@ static void	check_loop_name(const char *, enum loop_exit_kind);
 %right	'='
 %nonassoc '?' '|'
 %left	tOR tAND
+%left	tBOR tBAND tBXOR
 %left   tEQ tNE '<' tLE '>' tGE tIN
+%left	tSHL tSHR
 %left	'+' '-'
 %left	'*' '/' '%'
 %right	'^'
-%left	'!' tUNARYMINUS
+%left	'!' tUNARYMINUS '~'
 %nonassoc '.' ':' '[' '$'
 
 %%
@@ -142,6 +146,47 @@ statement:
 		    $$->s.cond.arms = alloc_cond_arm($3, $5);
 		    $$->s.cond.arms->next = $6;
 		    $$->s.cond.otherwise = $7;
+		}
+	| tFOR '{' scatter_any '}' tIN '(' expr ')'
+		{
+		    const char *vname;
+		    Stream *s;
+		    int id;
+
+		    if (!$3) {
+			yyerror("Empty list in scattering for.");
+			return 0;
+		    }
+
+		    vet_scatter($3);
+		    vname = get_name_from_id($3->id);
+		    s = new_stream(8);
+		    stream_printf(s, "@%s", vname);
+		    id = find_id(alloc_string(stream_contents(s)));
+		    free_stream(s);
+		    push_loop_name_with_id(vname, id);
+
+		    $<integer>$ = id;
+		}
+	  statements tENDFOR
+		{
+		    Stmt *s;
+		    Expr *lhs, *rhs;
+		    int id = $<integer>9;
+
+		    lhs = alloc_expr(EXPR_SCATTER);
+		    lhs->e.scatter = $3;
+		    rhs = alloc_expr(EXPR_ID);
+		    rhs->e.id = id;
+		    s = alloc_stmt(STMT_EXPR);
+		    s->s.expr = alloc_binary(EXPR_ASGN, lhs, rhs);
+		    s->next = $10;
+
+		    $$ = alloc_stmt(STMT_LIST);
+		    $$->s.list.id = id;
+		    $$->s.list.expr = $7;
+		    $$->s.list.body = s;
+		    pop_loop_name();
 		}
 	| tFOR tID tIN '(' expr ')'
 		{
@@ -229,9 +274,10 @@ statement:
 		}
 	| tBREAK tID ';'
 		{
+		    int id =
 		    check_loop_name($2, LOOP_BREAK);
 		    $$ = alloc_stmt(STMT_BREAK);
-		    $$->s.exit = find_id($2);
+		    $$->s.exit = id;
 		}
 	| tCONTINUE ';'
 		{
@@ -241,9 +287,10 @@ statement:
 		}
 	| tCONTINUE tID ';'
 		{
+		    int id =
 		    check_loop_name($2, LOOP_CONTINUE);
 		    $$ = alloc_stmt(STMT_CONTINUE);
-		    $$->s.exit = find_id($2);
+		    $$->s.exit = id;
 		}
 	| tRETURN expr ';'
 		{
@@ -463,15 +510,17 @@ expr:
 		    unsigned f_no;
 
 		    $$ = alloc_expr(EXPR_CALL);
-		    if ((f_no = number_func_by_name($1)) == FUNC_NOT_FOUND) {
-			/* Replace with call_function("$1", @args) */
+		    if ((f_no = number_func_by_name($1)) == FUNC_NOT_FOUND ||
+		        f_no == core_function_num) {
+			/* Replace with core_function("$1", @args) */
 			Expr	       *fname = alloc_var(TYPE_STR);
 			Arg_List       *a = alloc_arg_list(ARG_NORMAL, fname);
 
 			fname->e.var.v.str = $1;
 			a->next = $3;
+			if (!is_core_function($1))
 			warning("Unknown built-in function: ", $1);
-			$$->e.call.func = number_func_by_name("call_function");
+			$$->e.call.func = core_function_num;
 			$$->e.call.args = a;
 		    } else {
 			$$->e.call.func = f_no;
@@ -503,6 +552,14 @@ expr:
 		{
 		    $$ = alloc_binary(EXPR_EXP, $1, $3);
 		}
+	| expr tSHL expr
+		{
+		    $$ = alloc_binary(EXPR_SHL, $1, $3);
+		}
+	| expr tSHR expr
+		{
+		    $$ = alloc_binary(EXPR_SHR, $1, $3);
+		}
 	| expr tAND expr
 		{
 		    $$ = alloc_binary(EXPR_AND, $1, $3);
@@ -510,6 +567,18 @@ expr:
 	| expr tOR expr
 		{
 		    $$ = alloc_binary(EXPR_OR, $1, $3);
+		}
+	| expr tBAND expr
+		{
+		    $$ = alloc_binary(EXPR_BAND, $1, $3);
+		}
+	| expr tBOR expr
+		{
+		    $$ = alloc_binary(EXPR_BOR, $1, $3);
+		}
+	| expr tBXOR expr
+		{
+		    $$ = alloc_binary(EXPR_BXOR, $1, $3);
 		}
 	| expr tEQ expr
 		{
@@ -559,6 +628,11 @@ expr:
 			$$ = alloc_expr(EXPR_NEGATE);
 			$$->e.expr = $2;
 		    }
+		}
+	| '~' expr
+		{
+		    $$ = alloc_expr(EXPR_BNOT);
+		    $$->e.expr = $2;
 		}
 	| '!' expr
 		{
@@ -649,6 +723,17 @@ ne_arglist:
 		}
 	;
 
+scatter_any:
+	  arglist
+		{
+		    $$ = scatter_from_arglist($1);
+		}
+	| scatter
+		{
+		    $$ = $1;
+		}
+	;
+
 scatter:
 	  ne_arglist ',' scatter_item
 		{
@@ -702,6 +787,12 @@ find_id(char *name)
 
     dealloc_string(name);
     return slot;
+}
+
+static const char*
+get_name_from_id(int id)
+{
+    return local_names->names[id];
 }
 
 static void
@@ -950,9 +1041,13 @@ start_over:
 
     switch(c) {
     case '>':
-	return follow('=', tGE, '>');
+	return follow('=', 1, 0)
+		? tGE
+		: follow('>', tSHR, '>');
     case '<':
-	return follow('=', tLE, '<');
+	return follow('=', 1, 0)
+		? tLE
+		: follow('<', tSHL, '<');
     case '=':
 	return ((c = follow('=', tEQ, 0))
 		? c
@@ -960,9 +1055,15 @@ start_over:
     case '!': 
         return follow('=', tNE, '!');
     case '|':
-        return follow('|', tOR, '|');
+        return follow('|', 1, 0)
+		? tOR
+		: follow('.', tBOR, '|');
+    case '^':
+	return follow('.', tBXOR, '^');
     case '&':
-	return follow('&', tAND, '&');
+	return follow('&', 1, 0)
+		? tAND
+		: follow('.', tBAND, '&');
     normal_dot:
     case '.':
 	return follow('.', tTO, '.');
@@ -1035,19 +1136,27 @@ struct loop_entry {
     struct loop_entry  *next;
     const char	       *name;
     int			is_barrier;
+    int			id;
 };
 
 static struct loop_entry *loop_stack;
 
 static void
-push_loop_name(const char *name)
+push_loop_name_with_id(const char *name, int id)
 {
     struct loop_entry  *entry = mymalloc(sizeof(struct loop_entry), M_AST);
 
     entry->next = loop_stack;
     entry->name = (name ? str_dup(name) : 0);
     entry->is_barrier = 0;
+    entry->id = id;
     loop_stack = entry;
+}
+
+static void
+push_loop_name(const char *name)
+{
+    push_loop_name_with_id(name, -1);
 }
 
 static void
@@ -1093,8 +1202,8 @@ resume_loop_scope(void)
     }
 }
 
-static void
-check_loop_name(const char *name, enum loop_exit_kind kind)
+static int
+check_loop_name(char *name, enum loop_exit_kind kind)
 {
     struct loop_entry  *entry;
 
@@ -1105,17 +1214,25 @@ check_loop_name(const char *name, enum loop_exit_kind kind)
 	    else
 		yyerror("No enclosing loop for `continue' statement");
 	}
-	return;
+	return -1;
     }
     
     for (entry = loop_stack; entry && !entry->is_barrier; entry = entry->next)
 	if (entry->name  &&  mystrcasecmp(entry->name, name) == 0)
-	    return;
+	{
+	    if (entry->id == -1)
+		entry->id = find_id(name);
+	    else
+		dealloc_string(name);
+	    return entry->id;
+	}
 
     if (kind == LOOP_BREAK)
 	error("Invalid loop name in `break' statement: ", name);
     else
 	error("Invalid loop name in `continue' statement: ", name);
+    dealloc_string(name);
+    return -1;
 }
 
 Program *
@@ -1244,7 +1361,7 @@ parse_list_as_program(Var code, Var *errors)
     state.cur_string = 1;
     state.cur_char = 0;
     state.errors = new_list(0);
-    program = parse_program(current_version, list_parser_client, &state);
+    program = parse_program(current_db_version, list_parser_client, &state);
     *errors = state.errors;
 
     return program;

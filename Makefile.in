@@ -26,6 +26,8 @@ COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) -c
 CSRCS = ast.c code_gen.c db_file.c db_io.c db_objects.c db_properties.c \
 	db_verbs.c decompile.c disassemble.c eval_env.c eval_vm.c \
 	exceptions.c execute.c extensions.c functions.c keywords.c list.c \
+	extension-fileio.c \
+	extension-gcrypt.c \
 	log.c malloc.c match.c md5.c name_lookup.c network.c net_mplex.c \
 	net_proto.c numbers.c objects.c parse_cmd.c pattern.c program.c \
 	property.c quota.c ref_count.c regexpr.c server.c storage.c \
@@ -67,7 +69,7 @@ SRCS = $(ALL_CSRCS) keywords.gperf $(YSRCS) $(HDRS) $(SYSHDRS)
 DISTFILES = $(SRCS) Makefile.in restart restart.sh \
 	Minimal.db README.Minimal \
 	ChangeLog.txt README configure.in configure config.h.in \
-	MOOCodeSequences.txt AddingNewMOOTypes.txt pgperf aclocal.m4
+	MOOCodeSequences.txt AddingNewMOOTypes.txt aclocal.m4
 
 COBJS = $(CSRCS:.c=.o)
 
@@ -75,12 +77,14 @@ YOBJS = $(YSRCS:.y=.o)
 
 OBJS = $(COBJS) $(YOBJS)
 
+FOR_GCRYPT = $(CPP) -dN $(CFLAGS) options.h | grep -q MOO_GCRYPT &&
+
 all:
 	cd ucd && $(MAKE) all
 	$(MAKE) moo
 
 moo:	$(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) $(LIBS) `$(FOR_GCRYPT) libgcrypt-config --libs` -o $@
 
 pure_moo: moo
 	purify $(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) -o $@
@@ -113,9 +117,16 @@ y.tab.h: parser.o
 	touch y.tab.h
 
 keywords.c: keywords.gperf
-	pgperf -aCIptT -k1,3,$$ keywords.gperf \
+	gperf -aCptT --ignore-case -k1,3,$$ keywords.gperf \
 		| sed -e 's/#include <ctype.h>/#include "my-ctype.h"/' \
 		> keywords.c
+	[ -s keywords.c ] || rm keywords.c
+
+version_options.h: version_opt_gen.pl options.h
+	perl $< || ( rm -f $@ && false; )
+
+extension-gcrypt.o: extension-gcrypt.c
+	$(CC) -c $(CFLAGS) `$(FOR_GCRYPT) libgcrypt-config --cflags` $< -o $@
 
 dist.tar.Z:	$(DISTFILES)
 	rm -f version_number
@@ -136,7 +147,7 @@ tags:
 	etags -t $(SRCS)
 
 clean:
-	rm -f $(OBJS) $(OPT_NET_OBJS) core parser.c y.tab.c y.tab.h y.output makedep eddep
+	rm -f $(OBJS) $(OPT_NET_OBJS) core parser.c keywords.c y.tab.c y.tab.h y.output version_options.h makedep eddep
 	cd ucd && $(MAKE) clean
 
 distclean:	clean
@@ -322,6 +333,9 @@ parser.o:	my-ctype.h my-math.h my-stdlib.h my-string.h \
 network.o: 	net_single.o net_multi.o
 net_proto.o:	net_bsd_tcp.o net_bsd_lcl.o net_sysv_tcp.o net_sysv_lcl.o
 net_mplex.o:	net_mp_selct.o net_mp_poll.o net_mp_fake.o
+version.o:	version_src.h version_options.h
+version_src.h:
+	if [ ! -e $@ ]; then touch $@; fi
 
 $(OPT_NET_OBJS):
 	touch $@

@@ -107,7 +107,14 @@ struct mapping ext_mappings[] =
     {EOP_CONTINUE, "CONTINUE"},
     {EOP_WHILE_ID, "WHILE_ID"},
     {EOP_EXIT, "EXIT"},
-    {EOP_EXIT_ID, "EXIT_ID"}};
+    {EOP_EXIT_ID, "EXIT_ID"},
+    {EOP_SHL, "SHL"},
+    {EOP_SHR, "SHR"},
+    {EOP_BAND, "BAND"},
+    {EOP_BOR, "BOR"},
+    {EOP_BXOR, "BXOR"},
+    {EOP_BNOT, "BNOT"},
+};
 
 static void
 initialize_tables(void)
@@ -187,7 +194,6 @@ disassemble(Program * prog, Printer p, void *data)
     int i, l;
     unsigned pc;
     Bytecodes bc;
-    const char *ptr;
     const char **names = prog->var_names;
     unsigned tmp, num_names = prog->num_var_names;
 #   define NAMES(i)	(tmp = i,					\
@@ -339,35 +345,7 @@ disassemble(Program * prog, Printer p, void *data)
 				  NAMES(ADD_BYTES(bc.numbytes_var_name)));
 		    break;
 		case OP_IMM:
-		    {
-			Var v;
-
-			v = literals[ADD_BYTES(bc.numbytes_literal)];
-			switch (v.type) {
-			case TYPE_OBJ:
-			    stream_printf(insn, " #%"PRIdN, v.v.obj);
-			    break;
-			case TYPE_INT:
-			    stream_printf(insn, " %"PRIdN, v.v.num);
-			    break;
-			case TYPE_STR:
-			    stream_add_string(insn, " \"");
-			    for (ptr = v.v.str; *ptr; ptr++) {
-				if (*ptr == '"' || *ptr == '\\')
-				    stream_add_char(insn, '\\');
-				stream_add_char(insn, *ptr);
-			    }
-			    stream_add_char(insn, '"');
-			    break;
-			case TYPE_ERR:
-			    stream_printf(insn, " %s", error_name(v.v.err));
-			    break;
-			default:
-			    stream_printf(insn, " <literal type = %d>",
-					  v.type);
-			    break;
-			}
-		    }
+		    unparse_value(insn, literals[ADD_BYTES(bc.numbytes_literal)]);
 		    break;
 		case OP_BI_FUNC_CALL:
 		    stream_printf(insn, " %s", name_func_by_num(ADD_BYTES(1)));
@@ -446,12 +424,15 @@ bf_disassemble(Var arglist, Byte next, void *vdata, Objid progr)
 	return make_error_pack(e);
     }
     h = find_described_verb(oid, desc);
+    h = db_dup_verb_handle(h);
     free_var(arglist);
 
     if (!h.ptr)
 	return make_error_pack(E_VERBNF);
-    if (!db_verb_allows(h, progr, VF_READ))
+    if (!db_verb_allows(h, progr, VF_READ)) {
+	db_free_verb_handle(h);
 	return make_error_pack(E_PERM);
+    }
 
     data.lines = 0;
     data.used = data.max = 0;
@@ -463,6 +444,7 @@ bf_disassemble(Var arglist, Byte next, void *vdata, Objid progr)
     }
     if (data.lines)
 	myfree(data.lines, M_DISASSEMBLE);
+    db_free_verb_handle(h);
     return make_var_pack(r);
 }
 

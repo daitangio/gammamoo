@@ -381,6 +381,10 @@ capture_label(State * state)
     f.prev_stacks = state->num_stacks;
     f.next = -1;
 
+    /* silence compiler warning;
+     * capture_label() is always followed by add_known_label()
+     */
+    f.pc = 0xdefeca7e;
     return f;
 }
 
@@ -626,6 +630,10 @@ generate_expr(Expr * expr, State * state)
 	generate_expr(expr->e.expr, state);
 	emit_byte(expr->kind == EXPR_NOT ? OP_NOT : OP_UNARY_MINUS, state);
 	break;
+    case EXPR_BNOT:
+	generate_expr(expr->e.expr, state);
+	emit_extended_byte(EOP_BNOT, state);
+	break;
     case EXPR_EQ:
     case EXPR_NE:
     case EXPR_GE:
@@ -692,10 +700,41 @@ generate_expr(Expr * expr, State * state)
 	}
 	break;
     case EXPR_EXP:
-	generate_expr(expr->e.bin.lhs, state);
-	generate_expr(expr->e.bin.rhs, state);
-	emit_extended_byte(EOP_EXP, state);
-	pop_stack(1, state);
+    case EXPR_SHL:
+    case EXPR_SHR:
+    case EXPR_BAND:
+    case EXPR_BOR:
+    case EXPR_BXOR:
+	{
+	    Extended_Opcode op = EOP_EXP;	/* init to silence warning */
+
+	    generate_expr(expr->e.bin.lhs, state);
+	    generate_expr(expr->e.bin.rhs, state);
+	    switch (expr->kind) {
+	    case EXPR_EXP:
+		op = EOP_EXP;
+		break;
+	    case EXPR_SHL:
+		op = EOP_SHL;
+		break;
+	    case EXPR_SHR:
+		op = EOP_SHR;
+		break;
+	    case EXPR_BAND:
+		op = EOP_BAND;
+		break;
+	    case EXPR_BOR:
+		op = EOP_BOR;
+		break;
+	    case EXPR_BXOR:
+		op = EOP_BXOR;
+		break;
+	    default:
+		panic("Not an extended binary operator in GENERATE_EXPR()");
+	    }
+	    emit_extended_byte(op, state);
+	    pop_stack(1, state);
+	}
 	break;
     case EXPR_INDEX:
 	{

@@ -19,6 +19,7 @@ extern void register_disassemble(void);
 extern void register_extensions(void);
 extern void register_execute(void);
 extern void register_functions(void);
+extern void register_gcrypt(void);
 extern void register_list(void);
 extern void register_log(void);
 extern void register_numbers(void);
@@ -27,6 +28,9 @@ extern void register_property(void);
 extern void register_server(void);
 extern void register_tasks(void);
 extern void register_verbs(void);
+/************************/
+extern void register_fileio(void);
+/************************/
 
 /* 
  * $Log$

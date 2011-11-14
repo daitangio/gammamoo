@@ -30,6 +30,8 @@
 #include "unparse.h"
 #include "utils.h"
 
+unsigned core_function_num;
+
 /*****************************************************************************
  * This is the table of procedures that register MOO built-in functions.  To
  * add new built-in functions to the server, add to the list below the name of
@@ -47,6 +49,7 @@ static registry bi_function_registries[] =
     register_extensions,
     register_execute,
     register_functions,
+    register_gcrypt,
     register_list,
     register_log,
     register_numbers,
@@ -54,7 +57,8 @@ static registry bi_function_registries[] =
     register_property,
     register_server,
     register_tasks,
-    register_verbs
+    register_verbs,
+    register_fileio
 };
 
 void
@@ -199,7 +203,7 @@ call_bi_func(unsigned n, Var arglist, Byte func_pc,
 	/*
 	 * Check permissions, if protected
 	 */
-	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str)) { */
+	/* if (caller() != SYSTEM_OBJECT && server_flag_option(f->protect_str, 0)) { */
 	if (caller() != SYSTEM_OBJECT && f->protected) {
 	    /* Try calling #0:bf_FUNCNAME(@ARGS) instead */
 	    enum error e = call_verb2(SYSTEM_OBJECT, f->verb_str, arglist, 0);
@@ -302,12 +306,13 @@ read_bi_func_data(Byte f_id, void **bi_func_state, Byte * bi_func_pc)
 
 
 package
-make_kill_pack()
+make_abort_pack(enum abort_reason reason)
 {
     package p;
 
     p.kind = BI_KILL;
-
+    p.u.ret.type = TYPE_INT;
+    p.u.ret.v.num = reason;
     return p;
 }
 
@@ -428,6 +433,88 @@ function_description(int i)
     return v;
 }
 
+static
+char
+is_core_function_internal(const char *func, char **buf_out)
+{
+    db_verb_handle h;
+    size_t bilen = memo_strlen(func);
+    char *s = mymalloc(bilen + 9, M_STRING);
+
+    *buf_out = s;
+    memcpy(&s[8], func, bilen);
+    s[bilen + 8] = '\0';
+
+    memcpy(&s[4], "bf__", 4);
+    h = db_find_callable_verb(SYSTEM_OBJECT, &s[4]);
+    if (!h.ptr)
+	return 0;
+
+    return 1;
+}
+
+char
+is_core_function(const char *func)
+{
+    char *s;
+    char r;
+
+    r = is_core_function_internal(func, &s);
+    free_str(s);
+    return r;
+}
+
+static package
+bf_core_function(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    enum error e;
+    char *s;
+    unsigned fnum;
+
+    /* make sure $bf__FUNCNAME exists */
+    if (!is_core_function_internal(arglist.v.list[1].v.str, &s))
+    {
+	free_str(s);
+	return make_error_pack(E_VERBNF);
+    }
+
+    /* don't allow calling real builtins this way */
+    fnum = number_func_by_name(arglist.v.list[1].v.str);
+    if (fnum != FUNC_NOT_FOUND && fnum != core_function_num)
+	return make_raise_pack(E_INVARG, "Can't call real built-in functions via core_function",
+			       var_ref(arglist.v.list[1]));
+
+    arglist = listdelete(arglist, 1);
+
+    memcpy(s, "protect_", 8);
+    if (caller() != SYSTEM_OBJECT && server_flag_option(s, 0)) {
+	    /* Try calling $bf_FUNCNAME(@ARGS) instead */
+	    memcpy(&s[5], "bf_", 3);
+	    e = call_verb(SYSTEM_OBJECT, &s[5], arglist, 0);
+
+	    if (e == E_NONE) {
+		free_str(s);
+		return tail_call_pack();
+	    }
+
+	    if (e == E_MAXREC || !is_wizard(progr)) {
+		free_str(s);
+		free_var(arglist);
+		return make_error_pack(e == E_MAXREC ? e : E_PERM);
+	    }
+    }
+
+    memcpy(&s[4], "bf__", 4);
+    e = call_verb(SYSTEM_OBJECT, &s[4], arglist, 0);
+    free_str(s);
+
+    if (e == E_NONE)
+	return tail_call_pack();
+
+    free_var(arglist);
+    return make_error_pack(e);
+}
+
 static package
 bf_function_info(Var arglist, Byte next, void *vdata, Objid progr)
 {
@@ -452,20 +539,43 @@ bf_function_info(Var arglist, Byte next, void *vdata, Objid progr)
 }
 
 static void
-load_server_protect_flags(void)
+load_server_protect_function_flags(void)
 {
     int i;
 
     for (i = 0; i < top_bf_table; i++) {
-	bf_table[i].protected = server_flag_option(bf_table[i].protect_str);
+	bf_table[i].protected
+	    = server_flag_option(bf_table[i].protect_str, 0);
     }
-    oklog("Loaded protect cache for %d builtins\n", i);
+    oklog("Loaded protect cache for %d builtin functions\n", i);
 }
+
+int _server_int_option_cache[SVO__CACHE_SIZE];
 
 void
 load_server_options(void)
 {
-    load_server_protect_flags();
+    int value;
+
+    load_server_protect_function_flags();
+
+# define _BP_DO(PROPERTY, property)				\
+      _server_int_option_cache[SVO_PROTECT_##PROPERTY]		\
+	  = server_flag_option("protect_" #property, 0);	\
+
+    BUILTIN_PROPERTIES(_BP_DO);
+
+# undef _BP_DO
+
+# define _SVO_DO(SVO_MISC_OPTION, misc_option,			\
+		 kind, DEFAULT, CANONICALIZE)			\
+      value = server_##kind##_option(#misc_option, DEFAULT);	\
+      CANONICALIZE;						\
+      _server_int_option_cache[SVO_MISC_OPTION] = value;	\
+
+    SERVER_OPTIONS_CACHED_MISC(_SVO_DO, value);
+
+# undef _SVO_DO
 }
 
 static package
@@ -484,6 +594,8 @@ bf_load_server_options(Var arglist, Byte next, void *vdata, Objid progr)
 void
 register_functions(void)
 {
+    core_function_num =
+    register_function("core_function", 1, -1, bf_core_function, TYPE_STR);
     register_function("function_info", 0, 1, bf_function_info, TYPE_STR);
     register_function("load_server_options", 0, 0, bf_load_server_options);
 }

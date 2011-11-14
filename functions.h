@@ -31,7 +31,7 @@ typedef struct {
 	BI_RAISE,		/* Raising an error */
 	BI_CALL,		/* Making a nested verb call */
 	BI_SUSPEND,		/* Suspending the current task */
-	BI_KILL			/* Kill the current task */
+	BI_KILL			/* Killing the current task */
     } kind;
     union {
 	Var ret;
@@ -53,7 +53,13 @@ typedef struct {
 
 void register_bi_functions(void);
 
-package make_kill_pack(void);
+enum abort_reason {
+    ABORT_KILL    = -1, 	/* kill_task(task_id()) */
+    ABORT_SECONDS = 0,		/* out of seconds */
+    ABORT_TICKS   = 1		/* out of ticks */
+};
+
+package make_abort_pack(enum abort_reason reason);
 package make_error_pack(enum error err);
 package make_raise_pack(enum error err, const char *msg, Var value);
 package make_var_pack(Var v);
@@ -82,6 +88,9 @@ extern unsigned register_function(const char *, int, int, bf_type,...);
 extern unsigned register_function_with_read_write(const char *, int, int,
 						  bf_type, bf_read_type,
 						  bf_write_type,...);
+
+extern unsigned core_function_num;
+extern char is_core_function(const char *);
 
 extern package call_bi_func(unsigned, Var, Byte, Objid, void *);
 /* will free or use Var arglist */

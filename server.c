@@ -598,7 +598,8 @@ read_stdin_line()
 	s = new_stream(100);
 
     do {			/* Read even a very long line of input */
-	fgets(buffer, sizeof(buffer), stdin);
+	if (!fgets(buffer, sizeof(buffer), stdin))
+	    return NULL;
 	buflen = strlen(buffer);
 	if (buflen == 0)
 	    return 0;
@@ -720,7 +721,8 @@ emergency_mode()
 						wizard, debug, wizard, "",
 						&result)) {
 		case OUTCOME_DONE:
-		    printf("=> %s\n", value_to_literal(result));
+		    unparse_value(s, result);
+		    printf("=> %s\n", reset_stream(s));
 		    free_var(result);
 		    break;
 		case OUTCOME_ABORTED:
@@ -784,6 +786,7 @@ emergency_mode()
 			printf("Verb not programmed.\n");
 		    }
 
+		    db_free_verb_handle(h);
 		    free_var(code);
 		    free_var(errors);
 		}
@@ -799,6 +802,7 @@ emergency_mode()
 				    MAIN_VECTOR);
 		else
 		    printf("%s\n", message);
+		db_free_verb_handle(h);
 	    } else if (!mystrcasecmp(command, "disassemble") && nargs == 1) {
 		const char *verbref = words.v.list[2].v.str;
 		db_verb_handle h;
@@ -810,6 +814,7 @@ emergency_mode()
 		    disassemble_to_file(stdout, db_verb_program(h));
 		else
 		    printf("%s\n", message);
+		db_free_verb_handle(h);
 	    } else if (!mystrcasecmp(command, "abort") && nargs == 0) {
 	        printf("Bye.  (%s)\n\n", "NOT saving database");
 		exit(1);
@@ -904,14 +909,14 @@ set_server_cmdline(const char *line)
 }
 
 int
-server_flag_option(const char *name)
+server_flag_option(const char *name, int defallt)
 {
     Var v;
 
     if (get_server_option(SYSTEM_OBJECT, name, &v))
 	return is_true(v);
     else
-	return 0;
+	return defallt;
 }
 
 int
@@ -1284,10 +1289,18 @@ static package
 bf_server_version(Var arglist, Byte next, void *vdata, Objid progr)
 {
     Var r;
-    r.type = TYPE_STR;
-    r.v.str = str_dup(server_version);
+    if (arglist.v.list[0].v.num > 0) {
+	r = server_version_full(arglist.v.list[1]);
+    }
+    else {
+	r.type = TYPE_STR;
+	r.v.str = str_dup(server_version);
+    }
     free_var(arglist);
-    return make_var_pack(r);
+    if (r.type == TYPE_ERR)
+	return make_error_pack(r.v.err);
+    else
+	return make_var_pack(r);
 }
 
 static package
@@ -1456,6 +1469,79 @@ bf_open_network_connection(Var arglist, Byte next, void *vdata, Objid progr)
     return make_error_pack(E_PERM);
 
 #endif
+}
+
+static package
+create_connection_internal(int fromoid, int tooid, Var options, Objid progr)
+{
+    Var r, optval;
+    enum error e;
+    slistener lfrom, lto;
+    server_listener slfrom, slto;
+
+    if (!is_wizard(progr))
+	return make_error_pack(E_PERM);
+
+    lto.print_messages = is_true(options);
+    lto.name = "create_connection (inbound)";
+    lto.desc = zero;
+    lto.oid = tooid;
+    slto.ptr = &lto;
+
+    if (fromoid != NOTHING) {
+	lfrom.print_messages = 0;
+	lfrom.name = "create_connection (outbound)";
+	lfrom.desc = zero;
+	lfrom.oid = fromoid;
+	slfrom.ptr = &lfrom;
+    } else {
+	slfrom.ptr = NULL;
+    }
+
+    if ((e = network_create_connection(slfrom, fromoid, slto, tooid)) != E_NONE)
+	return make_error_pack(e);
+
+    r.type = TYPE_OBJ;
+    r.v.obj = next_unconnected_player + 1;
+
+    return make_var_pack(r);
+}
+
+static package
+bf_create_connection(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    int tooid = arglist.v.list[1].v.obj;
+    Var options;
+    package r;
+
+    if (arglist.v.list[0].v.num > 1)
+	options = var_ref(arglist.v.list[2]);
+    else
+	options = zero;
+
+    r = create_connection_internal(-1, tooid, options, progr);
+    free_var(arglist);
+    free_var(options);
+    return r;
+}
+
+static package
+bf_create_connection_from(Var arglist, Byte next, void *vdata, Objid progr)
+{
+    int fromoid = arglist.v.list[1].v.obj;
+    int tooid = arglist.v.list[2].v.obj;
+    Var options;
+    package r;
+
+    if (arglist.v.list[0].v.num > 2)
+	options = var_ref(arglist.v.list[3]);
+    else
+	options = zero;
+
+    r = create_connection_internal(fromoid, tooid, options, progr);
+    free_var(arglist);
+    free_var(options);
+    return r;
 }
 
 static package
@@ -1764,7 +1850,7 @@ bf_buffered_output_length(Var arglist, Byte next, void *vdata, Objid progr)
 void
 register_server(void)
 {
-    register_function("server_version", 0, 0, bf_server_version);
+    register_function("server_version", 0, 1, bf_server_version, TYPE_ANY);
     register_function("renumber", 1, 1, bf_renumber, TYPE_OBJ);
     register_function("reset_max_object", 0, 0, bf_reset_max_object);
     register_function("memory_usage", 0, 0, bf_memory_usage);
@@ -1773,6 +1859,10 @@ register_server(void)
     register_function("db_disk_size", 0, 0, bf_db_disk_size);
     register_function("open_network_connection", 0, -1,
 		      bf_open_network_connection);
+    register_function("create_connection", 1, 2, bf_create_connection,
+		      TYPE_OBJ, TYPE_ANY);
+    register_function("create_connection_from", 2, 3, bf_create_connection_from,
+		      TYPE_OBJ, TYPE_OBJ, TYPE_ANY);
     register_function("connected_players", 0, 1, bf_connected_players,
 		      TYPE_ANY);
     register_function("connected_seconds", 1, 1, bf_connected_seconds,

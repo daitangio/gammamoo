@@ -531,6 +531,7 @@ start_programming(tqueue * tq, char *argstr)
 	tq->program_stream = new_stream(100);
 	tq->program_object = db_verb_definer(h);
 	tq->program_verb = str_dup(vname);
+	db_free_verb_handle(h);
     }
 }
 
@@ -585,11 +586,12 @@ end_programming(tqueue * tq)
 	    Program *program;
 	    char buf[30];
 
+	    h = db_dup_verb_handle(h);
 	    s.player = tq->player;
 	    s.nerrors = 0;
 	    s.input = stream_contents(tq->program_stream);
 
-	    program = parse_program(current_version, client, &s);
+	    program = parse_program(current_db_version, client, &s);
 
 	    sprintf(buf, "%d error(s).", s.nerrors);
 	    notify(player, buf);
@@ -599,6 +601,7 @@ end_programming(tqueue * tq)
 		notify(player, "Verb programmed.");
 	    } else
 		notify(player, "Verb not programmed.");
+	    db_free_verb_handle(h);
 	}
     }
 
@@ -679,8 +682,17 @@ do_command_task(tqueue * tq, char *command)
     } else {
 	Parsed_Command *pc = parse_command(command, tq->player);
 
-	if (!pc)
-	    return 0;
+	if (!pc) {
+	    Var result;
+	    char did_one;
+
+	    run_server_task_setting_id(tq->player, tq->handler,
+	                               "do_null_command", new_list(0), command,
+	                               &result, &(tq->last_input_task_id));
+	    did_one = is_true(result);
+	    free_var(result);
+	    return did_one;
+	}
 
 	if (!do_intrinsic_command(tq, pc)) {
 	    Objid location = (valid(tq->player)
@@ -950,11 +962,13 @@ static void
 flush_input(tqueue * tq, int show_messages)
 {
     if (tq->first_input) {
-	Stream *s = new_stream(100);
+	Stream *s = 0;
 	task *t;
 
-	if (show_messages)
+	if (show_messages) {
 	    notify(tq->player, ">> Flushing the following pending input:");
+	    s = new_stream(100);
+	}
 	while ((t = dequeue_input_task(tq, DQ_FIRST)) != 0) {
 	    /* TODO*** flush only non-TASK_OOB tasks ??? */
 	    if (show_messages) {
@@ -963,8 +977,10 @@ flush_input(tqueue * tq, int show_messages)
 	    }
 	    free_task(t, 1);
 	}
-	if (show_messages)
+	if (show_messages) {
 	    notify(tq->player, ">> (Done flushing)");
+	    free_stream(s);
+	}
     } else if (show_messages)
 	notify(tq->player, ">> No pending input to flush...");
 }
@@ -1366,7 +1382,7 @@ register_task_queue(task_enumerator enumerator)
 static void
 write_forked_task(forked_task ft)
 {
-    int lineno = find_line_number(ft.program, ft.f_index, 0);
+    unsigned lineno = find_line_number(ft.program, ft.f_index, 0);
 
     dbio_printf("0 %d %ld %d\n", lineno, (long)ft.start_time, ft.id);
     write_activ_as_pi(ft.a);
@@ -1474,6 +1490,7 @@ read_task_queue(void)
 	    errlog("READ_TASK_QUEUE: Bad activation, count = %d.\n", count);
 	    return 0;
 	}
+	a.temp.type = TYPE_NONE;
 	if (!read_rt_env(&old_names, &old_rt_env, &old_size)) {
 	    errlog("READ_TASK_QUEUE: Bad env, count = %d.\n", count);
 	    return 0;
@@ -1580,14 +1597,16 @@ find_verb_for_programming(Objid player, const char *verbref,
     desc.type = TYPE_STR;
     desc.v.str = *vname;
     h = find_described_verb(oid, desc);
+    h = db_dup_verb_handle(h);
     free_str(copy);
 
     if (!h.ptr)
 	*message = "That object does not have that verb definition.";
     else if (!db_verb_allows(h, player, VF_WRITE)
-	     || (server_flag_option("protect_set_verb_code")
+	     || (server_flag_option("protect_set_verb_code", 0)
 		 && !is_wizard(player))) {
 	*message = "Permission denied.";
+	db_free_verb_handle(h);
 	h.ptr = 0;
     } else {
 	stream_printf(str, "Now programming %s:%s.  Use \".\" to end.",
@@ -2078,7 +2097,7 @@ bf_kill_task(Var arglist, Byte next, void *vdata, Objid progr)
     if (e != E_NONE)
 	return make_error_pack(e);
     else if (id == current_task_id)
-	return make_kill_pack();
+	return make_abort_pack(ABORT_KILL);
 
     return no_var_pack();
 }

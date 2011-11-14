@@ -31,6 +31,9 @@ new_stream(int size)
 {
     Stream *s = mymalloc(sizeof(Stream), M_STREAM);
 
+    if (size < 1)
+	size = 1;
+
     s->buffer = mymalloc(size, M_STREAM);
     s->buflen = size;
     s->current = 0;
@@ -38,15 +41,37 @@ new_stream(int size)
     return s;
 }
 
+Exception stream_too_big;
+size_t stream_alloc_maximum = 0;
+
+static int allow_stream_exceptions = 0;
+
+void
+enable_stream_exceptions()
+{
+    ++allow_stream_exceptions;
+}
+
+void
+disable_stream_exceptions()
+{
+    --allow_stream_exceptions;
+}
+
 static void
-grow(Stream * s, int newlen)
+grow(Stream * s, int newlen, int need)
 {
     char *newbuf;
 
-    newbuf = mymalloc(newlen, M_STREAM);
-    memcpy(newbuf, s->buffer, s->current);
-    myfree(s->buffer, M_STREAM);
-    s->buffer = newbuf;
+    if (allow_stream_exceptions > 0) {
+	if (newlen > stream_alloc_maximum) {
+	    if (s->current + need < stream_alloc_maximum)
+		newlen = stream_alloc_maximum;
+	    else
+		RAISE(stream_too_big, 0);
+	}
+    }
+    s->buffer = myrealloc(s->buffer, newlen, M_STREAM);
     s->buflen = newlen;
 }
 
@@ -54,7 +79,7 @@ void
 stream_add_char(Stream * s, char c)
 {
     if (s->current + 1 >= s->buflen)
-	grow(s, s->buflen * 2);
+	grow(s, s->buflen * 2, 1);
 
     s->buffer[s->current++] = c;
 }
@@ -63,7 +88,7 @@ void
 stream_add_utf(Stream * s, int c)
 {
     if (s->current + 5 >= s->buflen)
-	grow(s, s->buflen * 2);
+	grow(s, s->buflen * 2, s->current + 5);  // FIXME: might *not* NEED this much...
 
     char *b = s->buffer + s->current;
     put_utf(&b, c);
@@ -98,7 +123,7 @@ stream_add_string(Stream * s, const char *string)
 
 	if (newlen <= s->current + len)
 	    newlen = s->current + len + 1;
-	grow(s, newlen);
+	grow(s, newlen, len);
     }
     strcpy(s->buffer + s->current, string);
     s->current += len;
@@ -121,7 +146,7 @@ stream_printf(Stream * s, const char *fmt,...)
 
 	if (newlen <= s->current + len)
 	    newlen = s->current + len + 1;
-	grow(s, newlen);
+	grow(s, newlen, newlen);
 	len = vsnprintf(s->buffer + s->current, s->buflen - s->current, fmt, args);
     }
     va_end(args);

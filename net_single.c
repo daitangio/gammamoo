@@ -33,7 +33,9 @@ static enum {
 } state = STATE_CLOSED;
 static int listening = 0;
 static server_listener slistener;
+static server_handle sh;
 static int binary = 0;
+static Stream *input = 0;
 
 const char *
 network_protocol_name(void)
@@ -110,10 +112,27 @@ network_connection_name(network_handle nh)
     return "standard input";
 }
 
+enum error
+network_create_connection(server_listener from, Objid fromoid, server_listener to, Objid tooid)
+{
+    return E_VERBNF;
+}
+
 void
 network_set_connection_binary(network_handle nh, int do_binary)
 {
     binary = do_binary;
+
+    if (do_binary) {
+	int count = stream_length(input);
+
+	if (count) {
+	    Stream *s = new_stream(count + 1);
+	    stream_add_raw_bytes_to_binary(s, reset_stream(input), count);
+	    server_receive_line(sh, stream_contents(s));
+	    free_stream(s);
+	}
+    }
 }
 
 #define NETWORK_CO_TABLE(DEFINE, nh, value, _)
@@ -160,8 +179,7 @@ int
 network_process_io(int timeout)
 {
     network_handle nh;
-    static server_handle sh;
-    static Stream *s = 0;
+    Stream *s = input;
     char buffer[1024];
     int count;
     char *ptr, *end;
@@ -194,7 +212,7 @@ network_process_io(int timeout)
 		   && (count = read(0, buffer, sizeof(buffer))) > 0) {
 		got_some = 1;
 		if (binary) {
-		    stream_add_string(s, raw_bytes_to_binary(buffer, count));
+		    stream_add_raw_bytes_to_binary(s, buffer, count);
 		    server_receive_line(sh, reset_stream(s));
 		} else
 		    for (ptr = buffer, end = buffer + count;
@@ -202,14 +220,27 @@ network_process_io(int timeout)
 			 ptr++) {
 			unsigned char c = *ptr;
 
-			if (isgraph(c) || c == ' ' || c == '\t')
-			    stream_add_char(s, c);
+			if (c == '\n') {
+			    int fcount = stream_length(s);
+			    char *fptr = reset_stream(s);
+			    Stream *fs = new_stream(count + 1);
+			    int i;
+
+			    for (i = 0; i < fcount; ++i) {
+				c = fptr[i];
+
+				if (isgraph(c) || c == ' ' || c == '\t')
+				    stream_add_char(fs, c);
 #ifdef INPUT_APPLY_BACKSPACE
-			else if (c == 0x08 || c == 0x7F)
-			    stream_delete_char(s);
+				else if (c == 0x08 || c == 0x7F)
+				    stream_delete_char(fs);
 #endif
-			else if (c == '\n')
-			    server_receive_line(sh, reset_stream(s));
+			    }
+			    server_receive_line(sh, stream_contents(fs));
+			    free_stream(fs);
+			}
+			else
+			    stream_add_char(s, c);
 		    }
 	    }
 

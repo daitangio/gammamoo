@@ -22,6 +22,9 @@
 
 #include "config.h"
 
+#define MAXINT	INT64_MAX
+#define MAXOBJ	INT64_MAX
+
 /* Note: it's a pretty hard assumption in MOO that integers and objects
    are the same data type. */
 typedef int64_t Num;
@@ -44,7 +47,8 @@ typedef Num Objid;
  */
 enum error {
     E_NONE, E_TYPE, E_DIV, E_PERM, E_PROPNF, E_VERBNF, E_VARNF, E_INVIND,
-    E_RECMOVE, E_MAXREC, E_RANGE, E_ARGS, E_NACC, E_INVARG, E_QUOTA, E_FLOAT
+    E_RECMOVE, E_MAXREC, E_RANGE, E_ARGS, E_NACC, E_INVARG, E_QUOTA, E_FLOAT,
+    E_FILE
 };
 
 /* Do not reorder or otherwise modify this list, except to add new elements at
@@ -113,6 +117,19 @@ struct Var {
 #endif
 
 extern Var zero;		/* useful constant */
+
+/*
+ * Hard limits on string and list sizes are imposed mainly to keep
+ * malloc calculations from rolling over, and thus preventing the
+ * ensuing buffer overruns.  Sizes allow space for reference counts
+ * and cached length values.  Actual limits imposed on
+ * user-constructed lists and strings should generally be smaller
+ * (see DEFAULT_MAX_LIST_CONCAT and DEFAULT_MAX_STRING_CONCAT
+ *  in options.h)
+ */
+#define MAX_LIST   (INT32_MAX/sizeof(Var) - 2)
+#define MAX_STRING (INT32_MAX - 9)
+
 
 #endif				/* !Structures_h */
 

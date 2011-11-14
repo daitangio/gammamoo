@@ -264,12 +264,22 @@ extern int db_for_all_propdefs(Objid,
 				 * if the references are to be persistent.
 				 */
 
+#define BUILTIN_PROPERTIES(DEFINE)		\
+    DEFINE(NAME,name)				\
+    DEFINE(OWNER,owner)				\
+    DEFINE(PROGRAMMER,programmer)		\
+    DEFINE(WIZARD,wizard)			\
+    DEFINE(R,r)					\
+    DEFINE(W,w)					\
+    DEFINE(F,f)					\
+    DEFINE(LOCATION,location)			\
+    DEFINE(CONTENTS,contents)
+
 enum bi_prop {
-    BP_NONE = 0,
-    BP_NAME, BP_OWNER,
-    BP_PROGRAMMER, BP_WIZARD,
-    BP_R, BP_W, BP_F,
-    BP_LOCATION, BP_CONTENTS
+    BP_NONE = 0
+#define _BP_DO(P,p) , BP_##P
+    BUILTIN_PROPERTIES(_BP_DO)
+#undef _BP_DO
 };
 
 typedef struct {
@@ -480,6 +490,9 @@ extern db_verb_handle db_find_indexed_verb(Objid oid, unsigned idx);
 				 * `db_verb_handle' argument are guaranteed to
 				 * leave the handle intact.
 				 */
+
+extern db_verb_handle db_dup_verb_handle(db_verb_handle);
+extern void db_free_verb_handle(db_verb_handle);
 
 extern Objid db_verb_definer(db_verb_handle);
 				/* Returns the object on which the given verb
