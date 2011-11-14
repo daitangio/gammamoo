@@ -108,7 +108,7 @@ keywords.c: keywords.gperf
 		| sed -e 's/#include <ctype.h>/#include "my-ctype.h"/' \
 		> keywords.c
 
-dist.tar.Z:	$(DISTFILES)
+dist.tar.gz:	$(DISTFILES)
 	rm -f version_number
 	grep "server_version = " version.c \
 		| sed -e 's/^.* = "//' -e 's/";//' > version_number
@@ -117,10 +117,10 @@ dist.tar.Z:	$(DISTFILES)
 	chmod 755 MOO-`cat version_number`
 	cp -pr $(DISTFILES) MOO-`cat version_number`
 	chmod u+w MOO-`cat version_number`/*
-	tar cvf - MOO-`cat version_number` | compress -c > dist.tar.Z.NEW
-	mv dist.tar.Z.NEW dist.tar.Z
-	rm -f LambdaMOO-`cat version_number`.tar.Z
-	ln dist.tar.Z LambdaMOO-`cat version_number`.tar.Z
+	tar cvf - MOO-`cat version_number` | gzip -c > dist.tar.gz.NEW
+	mv dist.tar.gz.NEW dist.tar.gz
+	rm -f LambdaMOO-`cat version_number`.tar.gz
+	ln dist.tar.gz LambdaMOO-`cat version_number`.tar.gz
 	rm -fr MOO-`cat version_number` version_number
 
 tags:
