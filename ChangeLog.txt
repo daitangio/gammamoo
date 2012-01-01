@@ -2497,3 +2497,7 @@ Version X, in progress
 -- The server can be (and is, by default) linked against libgcrypt for more
    hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
    this or cannot use libgcrypt for some reason.
+
+Version X, in progress
+**** Changes relevant to server hackers:
+-- configure script is now generated with autoconf 2.13 or 2.5x+
