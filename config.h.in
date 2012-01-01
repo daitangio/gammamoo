@@ -285,6 +285,8 @@
 #  endif
 #endif
 
+#undef MOO_GCRYPT
+
 #endif /* !Config_H */
 
 /* 

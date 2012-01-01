@@ -216,16 +216,6 @@
 #define INPUT_APPLY_BACKSPACE
 
 /******************************************************************************
- * If you have libgcrypt, the MOO server can support more advanced hashing
- * algorithms for the builtin hashing functions (binary_hash, string_hash, and
- * value_hash). Hashing functions should be passed an algorithm name as their
- * second parameter, or the backward-compatible default of MD5 will be used
- * (please note that MD5 is not cryptographically secure).
- * (Comment this out to disable libgcrypt support)
- */
-#define MOO_GCRYPT
-
-/******************************************************************************
  * The server maintains a cache of the most recently used patterns from calls
  * to the match() and rmatch() built-in functions.  PATTERN_CACHE_SIZE controls
  * how many past patterns are remembered by the server.  Do not set it to a

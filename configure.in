@@ -18,6 +18,9 @@ dnl
 AC_INIT(Makefile.in)
 AC_CONFIG_HEADER(config.h)
 
+AC_SUBST(MOOLIBS)
+AC_SUBST(LIBGCRYPT_CFLAGS)
+
 dnl ***************************************************************************
 dnl	MOO_AUX
 dnl Defines _POSIX_SOURCE if this machine is running A/UX; this appears to be
@@ -502,6 +505,30 @@ main ()
   exit(result);
 }
 ], AC_DEFINE(POSIX_NONBLOCKING_WORKS))
+
+dnl ***************************************************************************
+
+AC_ARG_WITH(libgcrypt,
+	AS_HELP_STRING([--disable-libgcrypt],
+		[gcrypt support]),
+	[],
+	[with_libgcrypt=auto]
+)
+if test "x$with_libgcrypt" != "xno"; then
+	AC_CHECK_PROG([LIBGCRYPT_CONFIG], [libgcrypt-config], [libgcrypt-config], [:])
+	if test "x$LIBGCRYPT_CONFIG" = "x:"; then
+		if test "x$with_libgcrypt" = "xauto"; then
+			with_libgcrypt=no
+			AC_MSG_WARN([Could not find libgcrypt: only (insecure) MD5 hashing will be available])
+		else
+			AC_MSG_ERROR([You used --with-libgcrypt, but I could not find libgcrypt-config])
+		fi
+	else
+		MOOLIBS="$MOOLIBS `$LIBGCRYPT_CONFIG --libs`"
+		LIBGCRYPT_CFLAGS="`$LIBGCRYPT_CONFIG --cflags`"
+		AC_DEFINE(MOO_GCRYPT)
+	fi
+fi
 
 dnl ***************************************************************************
 echo checking which MOO networking configurations are likely to work...
