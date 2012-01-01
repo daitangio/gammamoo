@@ -15,6 +15,7 @@
 
 CC = @CC@
 LIBRARIES = @LIBS@
+MOOLIBS = @MOOLIBS@
 YACC = @YACC@
 
 CFLAGS = -O
@@ -28,6 +29,8 @@ CFLAGS = -O
 
 YFLAGS = -d
 COMPILE.c = $(CC) $(CFLAGS) $(CPPFLAGS) -c
+
+LIBGCRYPT_CFLAGS = @LIBGCRYPT_CFLAGS@
 
 CSRCS = ast.c code_gen.c db_file.c db_io.c db_objects.c db_properties.c \
 	db_verbs.c decompile.c disassemble.c eval_env.c eval_vm.c \
@@ -84,13 +87,11 @@ YOBJS = $(YSRCS:.y=.o)
 
 OBJS = $(COBJS) $(YOBJS)
 
-FOR_GCRYPT = $(CPP) -dN $(CFLAGS) options.h | grep -q MOO_GCRYPT &&
-
 moo:	$(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) `$(FOR_GCRYPT) libgcrypt-config --libs` -o $@
+	$(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) $(MOOLIBS) -o $@
 
 pure_moo: moo
-	purify $(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) -o $@
+	purify $(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) $(MOOLIBS) -o $@
 
 client_bsd: client_bsd.o
 	$(CC) $(CFLAGS) client_bsd.o $(LIBRARIES) -o $@
@@ -129,7 +130,7 @@ version_options.h: version_opt_gen.pl options.h
 	perl $< || ( rm -f $@ && false; )
 
 extension-gcrypt.o: extension-gcrypt.c
-	$(CC) -c $(CFLAGS) `$(FOR_GCRYPT) libgcrypt-config --cflags` $< -o $@
+	$(CC) -c $(CFLAGS) $(LIBGCRYPT_CFLAGS) $< -o $@
 
 dist.tar.gz:	$(DISTFILES)
 	rm -f version_number
