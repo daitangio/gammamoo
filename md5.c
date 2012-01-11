@@ -44,6 +44,10 @@
    documentation and/or software.  
  */
 
+#include "options.h"
+
+#ifndef MOO_GCRYPT
+
 #include "my-string.h"
 
 #include "md5.h"
@@ -321,6 +325,8 @@ md5_Final(md5ctx_t * context, uint8_t digest[16])
     /* Zeroize sensitive information */
     memset((char *) context, 0, sizeof(*context));
 }
+
+#endif /* MOO_GCRYPT */
 
 /* 
  * $Log$

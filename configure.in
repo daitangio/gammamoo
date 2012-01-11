@@ -18,6 +18,9 @@ dnl
 AC_INIT(Makefile.in)
 AC_CONFIG_HEADER(config.h)
 
+AC_SUBST(MOOLIBS)
+AC_SUBST(LIBGCRYPT_CFLAGS)
+
 dnl ***************************************************************************
 dnl	MOO_AUX
 dnl Defines _POSIX_SOURCE if this machine is running A/UX; this appears to be
@@ -157,10 +160,16 @@ define(MOO_HEADER_STANDS_ALONE, [
 changequote(,)dnl
 trfrom='[a-z]./' trto='[A-Z]__'
 changequote([,])dnl
-AC_COMPILE_CHECK(self-sufficiency of $1, [
+AC_MSG_CHECKING(if $1 is self-sufficient)
+AC_TRY_COMPILE([
 #include <$1>
 $2
-], , , AC_DEFINE_UNQUOTED(`echo $1 | tr "$trfrom" "$trto"`_NEEDS_HELP))
+], , [
+	AC_MSG_RESULT(yes)
+], [
+	AC_MSG_RESULT(no)
+	AC_DEFINE_UNQUOTED(`echo $1 | tr "$trfrom" "$trto"`_NEEDS_HELP)
+])
 ])
 
 dnl ***************************************************************************
@@ -507,6 +516,30 @@ main ()
 ], AC_DEFINE(POSIX_NONBLOCKING_WORKS))
 
 dnl ***************************************************************************
+
+AC_ARG_WITH(libgcrypt,
+	AS_HELP_STRING([--without-libgcrypt],
+		[gcrypt support]),
+	[],
+	[with_libgcrypt=auto]
+)
+if test "x$with_libgcrypt" != "xno"; then
+	AC_CHECK_PROG([LIBGCRYPT_CONFIG], [libgcrypt-config], [libgcrypt-config], [:])
+	if test "x$LIBGCRYPT_CONFIG" = "x:"; then
+		if test "x$with_libgcrypt" = "xauto"; then
+			with_libgcrypt=no
+			AC_MSG_WARN([Could not find libgcrypt: only (insecure) MD5 hashing will be available])
+		else
+			AC_MSG_ERROR([You used --with-libgcrypt, but I could not find libgcrypt-config])
+		fi
+	else
+		MOOLIBS="$MOOLIBS `$LIBGCRYPT_CONFIG --libs`"
+		LIBGCRYPT_CFLAGS="`$LIBGCRYPT_CONFIG --cflags`"
+		AC_DEFINE(MOO_GCRYPT)
+	fi
+fi
+
+dnl ***************************************************************************
 echo checking which MOO networking configurations are likely to work...
 define(MOO_ADD_NET_CONFIG,[
     NETWORK_CONFIGURATIONS="$NETWORK_CONFIGURATIONS $1"])
@@ -514,8 +547,10 @@ NETWORK_CONFIGURATIONS="NP_SINGLE"
 
 AC_CHECK_HEADER(sys/socket.h, [
 	MOO_ADD_NET_CONFIG(NS_BSD/NP_LOCAL)
-	AC_CHECK_PROG(have_telnet, telnet, yes, no)
-        test x$have_telnet = xyes && MOO_ADD_NET_CONFIG(NS_BSD/NP_TCP)])
+	AC_CHECK_HEADER(arpa/inet.h, [
+		MOO_ADD_NET_CONFIG(NS_BSD/NP_TCP)
+	])
+])
 AC_EGREP_CPP(yes-there-are-FIFOs, [#include <sys/stat.h>
 #if defined(S_IFIFO) && !defined(NeXT) && \
     (SELECT_WORKS_ON_FIFOS || POLL_WORKS_ON_FIFOS || FSTAT_WORKS_ON_FIFOS)

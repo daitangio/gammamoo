@@ -23,15 +23,21 @@ hash_bytes(Var arglist, const char *buf, size_t buflen)
 
     if (arglist.v.list[0].v.num > 1) {
         algo = gcry_md_map_name(arglist.v.list[2].v.str);
-        if (!algo)
-	    return make_raise_pack(E_INVIND, "Unknown hash algorithm",
-				   var_ref(arglist.v.list[2]));
+        if (!algo) {
+	    Var v = var_ref(arglist.v.list[2]);
+
+	    free_var(arglist);
+	    return make_raise_pack(E_INVIND, "Unknown hash algorithm", v);
+	}
     } else
 	algo = GCRY_MD_MD5;
 
-    if (gcry_md_test_algo(algo))
-	return make_raise_pack(E_INVIND, "Hash algorithm unavailable",
-			       var_ref(arglist.v.list[2]));
+    if (gcry_md_test_algo(algo)) {
+	Var v = var_ref(arglist.v.list[2]);
+
+	free_var(arglist);
+	return make_raise_pack(E_INVIND, "Hash algorithm unavailable", v);
+    }
 
     hash_size = gcry_md_get_algo_dlen(algo);
     hash = mymalloc(hash_size, M_STRING);

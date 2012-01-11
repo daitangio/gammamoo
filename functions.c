@@ -471,18 +471,37 @@ bf_core_function(Var arglist, Byte next, void *vdata, Objid progr)
     char *s;
     unsigned fnum;
 
+    /* don't allow calling real builtins this way */
+    /* just too risky with the whole *_read/*_write stuff */
+    fnum = number_func_by_name(arglist.v.list[1].v.str);
+    if (fnum != FUNC_NOT_FOUND && fnum != core_function_num) {
+	package p;
+
+	free_str(s);
+	p = make_raise_pack(E_INVARG, "Can't call real built-in functions via core_function",
+			       var_ref(arglist.v.list[1]));
+	free_var(arglist);
+	return p;
+    }
+
     /* make sure $bf__FUNCNAME exists */
     if (!is_core_function_internal(arglist.v.list[1].v.str, &s))
     {
-	free_str(s);
-	return make_error_pack(E_VERBNF);
-    }
+	static unsigned call_function_num = FUNC_NOT_FOUND;
 
-    /* don't allow calling real builtins this way */
-    fnum = number_func_by_name(arglist.v.list[1].v.str);
-    if (fnum != FUNC_NOT_FOUND && fnum != core_function_num)
-	return make_raise_pack(E_INVARG, "Can't call real built-in functions via core_function",
-			       var_ref(arglist.v.list[1]));
+	free_str(s);
+	if (call_function_num == FUNC_NOT_FOUND) {
+	    call_function_num = number_func_by_name("call_function");
+	    if (call_function_num == FUNC_NOT_FOUND) {
+		/* No call_function()??? */
+		free_var(arglist);
+		return make_error_pack(E_VERBNF);
+	    }
+	}
+	/* Let bf_call_function handle its own bf_ or error */
+	/* Unfortunately, this yields E_INVARG... */
+	return call_bi_func(call_function_num, arglist, next, progr, vdata);
+    }
 
     arglist = listdelete(arglist, 1);
 
