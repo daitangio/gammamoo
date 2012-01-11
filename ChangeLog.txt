@@ -2554,9 +2554,9 @@ Version 1.8.3+gamma0, in progress
    ensure future WAIF compatibility.
 -- The `restart' and `restart.sh' scripts have been modified to use gzip
    instead of the old `compress' program.
--- The server can be (and is, by default) linked against libgcrypt for more
-   hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
-   this or cannot use libgcrypt for some reason.
+-- The server can be (and is by default, if available) linked against libgcrypt
+   for more hashing algorithms. Pass --without-libgcrypt to configure if you
+   want the old MD5-only hash functions.
 
 **** Changes relevant to server hackers:
 -- Added HACKING as an index to the various server-hacking
