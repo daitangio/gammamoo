@@ -2493,11 +2493,11 @@ Version X, in progress
    argument, a string specifying which hash algorithm to use. For
    compatibility, the default algorithm is MD5 (please note that MD5 is not
    cryptographically secure).
-**** Changes significant to people compiling and running the server:
--- The server can be (and is, by default) linked against libgcrypt for more
-   hashing algorithms. Comment out MOO_GCRYPT in options.h if you don't want
-   this or cannot use libgcrypt for some reason.
 
-Version X, in progress
+**** Changes significant to people compiling and running the server:
+-- The server can be (and is by default, if available) linked against libgcrypt
+   for more hashing algorithms. Pass --without-libgcrypt to configure if you
+   want the old MD5-only hash functions.
+
 **** Changes relevant to server hackers:
 -- configure script is now generated with autoconf 2.13 or 2.5x+
