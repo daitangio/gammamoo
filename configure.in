@@ -509,7 +509,7 @@ main ()
 dnl ***************************************************************************
 
 AC_ARG_WITH(libgcrypt,
-	AS_HELP_STRING([--disable-libgcrypt],
+	AS_HELP_STRING([--without-libgcrypt],
 		[gcrypt support]),
 	[],
 	[with_libgcrypt=auto]
