@@ -34,6 +34,7 @@ CSRCS = ast.c code_gen.c db_file.c db_io.c db_objects.c db_properties.c \
 	exceptions.c execute.c extensions.c functions.c keywords.c list.c \
 	log.c malloc.c match.c md5.c name_lookup.c network.c net_mplex.c \
 	net_proto.c numbers.c objects.c parse_cmd.c pattern.c program.c \
+	parser.c \
 	property.c quota.c ref_count.c regexpr.c server.c storage.c streams.c str_intern.c \
 	sym_table.c tasks.c timers.c unparse.c utils.c verbs.c version.c
 
@@ -45,8 +46,6 @@ OPT_NET_SRCS = net_single.c net_multi.c \
 OPT_NET_OBJS = $(OPT_NET_SRCS:.c=.o)
 
 OPT_CSRCS = gnu-malloc.c $(OPT_NET_SRCS)
-
-YSRCS = parser.y
 
 HDRS =  ast.h bf_register.h code_gen.h db.h db_io.h db_private.h decompile.h \
 	db_tune.h \
@@ -67,7 +66,7 @@ CLIENT_SRCS = client_bsd.c client_sysv.c
 
 ALL_CSRCS = $(CSRCS) $(OPT_CSRCS) $(CLIENT_SRCS)
 
-SRCS = $(ALL_CSRCS) keywords.gperf $(YSRCS) $(HDRS) $(SYSHDRS)
+SRCS = $(ALL_CSRCS) keywords.gperf parser.y $(HDRS) $(SYSHDRS)
 
 DISTFILES = $(SRCS) Makefile.in restart restart.sh \
 	Minimal.db README.Minimal \
@@ -76,9 +75,7 @@ DISTFILES = $(SRCS) Makefile.in restart restart.sh \
 
 COBJS = $(CSRCS:.c=.o)
 
-YOBJS = $(YSRCS:.y=.o)
-
-OBJS = $(COBJS) $(YOBJS)
+OBJS = $(COBJS)
 
 moo:	$(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIBRARIES) -o $@
@@ -139,7 +136,7 @@ tags:
 	etags -t $(SRCS)
 
 clean:
-	rm -f $(OBJS) $(OPT_NET_OBJS) core parser.c y.tab.c y.tab.h y.output makedep eddep
+	rm -f $(OBJS) $(OPT_NET_OBJS) core y.tab.c y.tab.h y.output makedep eddep
 
 distclean:	clean
 	rm -f config.h Makefile config.status
