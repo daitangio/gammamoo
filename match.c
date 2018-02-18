@@ -118,23 +118,7 @@ match_contents(Objid player, const char *name)
 Objid
 match_object(Objid player, const char *name)
 {
-    Var matched_object;
-    Var match_object_args;
-
-    match_object_args = new_list(1);
-    match_object_args.v.list[1].type = TYPE_STR;
-    match_object_args.v.list[1].v.str = str_dup(name);
-
-    run_server_task(player, SYSTEM_OBJECT, "match_object",
-                    match_object_args, name, &matched_object);
-    if (matched_object.type == TYPE_OBJ) {
-	Objid o = matched_object.v.obj;
-
-	free_var(matched_object);
-	return o;
-    }
-    free_var(matched_object);
-
+  // GG201802: REMOVED MATCH code, resored original lambdamoo 1.8.x code
     if (name[0] == '\0')
 	return NOTHING;
     if (name[0] == '#') {

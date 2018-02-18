@@ -2583,3 +2583,12 @@ Version 1.8.3+gamma0, in progress
 -- New stream exception API to catch malloc failures
 -- Makefile now uses gperf (3.0.1+) to generate keywords.c
 -- configure script is now generated with autoconf 2.13 or 2.5x+
+
+Version 1.8.3+gamma0+DaitanXtension, in progress
+-- configure script is included again for ease of use
+-- $match_object() is not called anymore to lookup dobj and iobj (one
+at a time). It is unclear why this should be useful and the lambdamoo
+core did not support it (it breaks old database cores too).
+So for the meantime Giovanni Giorgi commented out the code
+-- Added a doc directory to better organize documentation. Included
+original manual in texinfo source and stared documenting extensions.
