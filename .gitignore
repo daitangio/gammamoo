@@ -1,5 +1,4 @@
 Makefile
-configure
 autom4te.cache
 config.cache
 config.h
@@ -17,3 +16,5 @@ moo
 *~
 *.rej
 *.orig
+TAGS
+parser.c

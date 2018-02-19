@@ -59,5 +59,7 @@ print $f
 		"DEF($_, \"" . $fv . "\")"
 	} keys %source;
 print $f "\n";
+print $f "#define VERSION_EXT \"+daitanXtension2018\"";
+print $f "\n";
 close $f;
 warn "Regenerated $outfile\n";

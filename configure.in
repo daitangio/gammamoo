@@ -531,6 +531,13 @@ if test "x$with_libgcrypt" != "xno"; then
 	fi
 fi
 
+# GG: FIXME Consider optional -lpthread see
+# https://www.sqlite.org/howtocompile.html                
+dnl **********************               
+echo Adding sqlite3 libs               
+MOOLIBS="$MOOLIBS -ldl"                 
+
+                
 dnl ***************************************************************************
 echo checking which MOO networking configurations are likely to work...
 define(MOO_ADD_NET_CONFIG,[

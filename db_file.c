@@ -40,6 +40,10 @@
 #include "timers.h"
 #include "version.h"
 
+// GG 201802 Sqlite3 integration
+#include "sqlite3/sqlite3.h"
+
+
 static char *input_db_name, *dump_db_name;
 static int dump_generation = 0;
 static const char *header_format_string
@@ -47,6 +51,22 @@ static const char *header_format_string
 
 DB_Version dbio_input_version;
 
+
+/*** SQLITE LOW LEVEL SUPPORT **/
+static void
+sql_bind_int(sqlite3_stmt *pStmt, const char *param, int value){
+  int index=sqlite3_bind_parameter_index(pStmt, param);
+  //oklog("SQL %s INDEX:%i",param,index);
+  sqlite3_bind_int(pStmt,index, value);
+}
+
+static void
+sql_bind_text(sqlite3_stmt *pStmt, const char *param, char *value){
+  int index=sqlite3_bind_parameter_index(pStmt, param);  
+  sqlite3_bind_text(pStmt,index, value,-1,SQLITE_STATIC);
+}
+
+
 
 /*********** Verb and property I/O ***********/
 
@@ -169,6 +189,49 @@ read_object(void)
     return 1;
 }
 
+static void sql_write_object(sqlite3 *db,sqlite3_stmt *ppStmt,Objid oid)
+{
+  Object *o;
+  Verbdef *v;
+  int nverbdefs, nprops;  
+  const char   *pzTail;
+  int rc;
+  
+  if (!valid(oid)) {
+    // TODO: Mark as recycled...'#%d recycled'  simple store
+    return;
+  }
+  o = dbpriv_find_object(oid);
+
+  
+  sqlite3_reset(ppStmt);
+  sql_bind_int(ppStmt,":oid",oid);
+  sql_bind_text(ppStmt,":name", o->name);
+
+  sql_bind_int(ppStmt,":flags",o->flags);
+
+  sql_bind_int(ppStmt,":owner",o->owner);
+
+  sql_bind_int(ppStmt,":location",o->location);
+  sql_bind_int(ppStmt,":contents",o->contents);
+  sql_bind_int(ppStmt,":next",o->next);
+
+  sql_bind_int(ppStmt,":parent",o->parent);
+  sql_bind_int(ppStmt,":child",o->child);
+  sql_bind_int(ppStmt,":sibling",o->sibling);
+  
+  rc=sqlite3_step(ppStmt);
+  if( rc !=SQLITE_DONE  ){
+    errlog("Unable to store object data into object table %s\n", sqlite3_errmsg(db));    
+  }
+
+  // TODO write verbdefs
+  // write propdefs,
+  // write propval
+
+}
+
+    
 static void
 write_object(Objid oid)
 {
@@ -486,6 +549,185 @@ read_db_file(void)
 /*********** File-level Output ***********/
 
 static int
+sql_callback_dump(void *reason, int argc, char **argv, char **azColName){
+  int i;  
+  for(i=0; i<argc; i++){
+    oklog("%s: SQL3_CALLBACK %s = %s\n", (char*) reason, azColName[i], argv[i] ? argv[i] : "NULL");
+  }  
+  return 0;
+}
+
+static int
+sql_write_db_file(const char *reason, const char *dbfile)
+{
+  Objid oid;
+  Objid max_oid = db_last_used_objid();
+  Verbdef *v;
+  Var user_list;
+  int i;
+  volatile int nprogs = 0, success = 1;
+  
+  char sqliteDbFilename[256];  
+  sprintf(sqliteDbFilename,"%s.sqlite3",dbfile);
+  oklog("%s: SQLITE3 Dump on %s starting...\n", reason, sqliteDbFilename);
+  
+  // GG See http://sqlite.org/quickstart.html
+  sqlite3 *db;
+  int rc;
+  char *zErrMsg = 0;
+  rc = sqlite3_open(sqliteDbFilename, &db);
+
+  if( rc ){
+    errlog("Can't open database: %s\n", sqlite3_errmsg(db));
+    sqlite3_close(db);
+    return !success;
+  }
+  // RESET...
+  rc = sqlite3_exec(db, "drop table if exists moo; "
+                        "drop table if exists users ;"
+                        "drop table if exists  object ;"
+                        "drop table if exists  object_prop ;"
+                        "drop table if exists  object_verb ;"
+                    , sql_callback_dump, 0, &zErrMsg);
+  
+  rc = sqlite3_exec(db,
+                    "create table moo( key text, value text); "
+                    "create table users( objid INTEGER); "
+                    "create table object( "
+                    " oid integer "
+                    ", name text"       
+                    ", flags integer"                    
+                    ", owner integer"
+                    ", location integer"
+                    ", contents integer"
+                    ", next integer"                    
+                    ", parent integer"
+                    ", child integer"
+                    ", sibling integer"          
+                    "); "
+                    /** cfr write_verbdef e write_propdef */
+                    "create table object_verb( oid integer, name text, owner integer, perms integer, prep integer ); "
+                    "create table object_prop( oid integer, var integer, owner integer, perms integer); "
+                    , sql_callback_dump, 0, &zErrMsg);
+  
+  if( rc!=SQLITE_OK ){
+    errlog("SQL error during schema creation: %s\n", zErrMsg);
+    sqlite3_free(zErrMsg);
+  }
+  
+  rc = sqlite3_exec(db, "insert into moo values('dbversion',1)", sql_callback_dump, 0, &zErrMsg);
+
+  for (oid = 0; oid <= max_oid; oid++) {
+    if (valid(oid))
+      for (v = dbpriv_find_object(oid)->verbdefs; v; v = v->next)
+        if (v->program)
+          nprogs++;
+  }
+
+  user_list = db_all_users();
+  TRY {
+    // DUMP HEADER:
+    //  max_oid + 1, nprogs, 0, user_list.v.list[0].v.num
+    int nusers=user_list.v.list[0].v.num;
+    sqlite3_stmt *ppStmt;  /* OUT: Statement handle */
+    const char *pzTail;     /* OUT: Pointer to unused portion of zSql */
+    rc=sqlite3_prepare_v2(db,
+                           "INSERT INTO MOO VALUES(:key, :value)",
+                          -1,&ppStmt,&pzTail);
+    if( rc!=SQLITE_OK ){ errlog("Cannot prepare insert into MOO"); RAISE(dbpriv_dbio_failed, 0); }
+    sqlite3_reset(ppStmt);
+    sqlite3_bind_text(ppStmt,1 ,"MAX_OID",-1,SQLITE_STATIC);
+    sqlite3_bind_int(ppStmt, 2 , (max_oid+1));
+    rc=sqlite3_step(ppStmt);
+   
+    sqlite3_reset(ppStmt);
+    sqlite3_bind_text(ppStmt,1 ,"NPROGS",-1,SQLITE_STATIC);
+    sqlite3_bind_int(ppStmt, 2 , nprogs);
+    rc=sqlite3_step(ppStmt);
+    
+    sqlite3_reset(ppStmt);
+    sqlite3_bind_text(ppStmt,1 ,"NUSERS",-1,SQLITE_STATIC);
+    sqlite3_bind_int(ppStmt, 2 , nusers);
+    rc=sqlite3_step(ppStmt);
+    if( rc !=SQLITE_DONE  ){
+      errlog("Unable to store Header data into MOO Table %s\n", sqlite3_errmsg(db));
+    }
+    sqlite3_finalize(ppStmt);
+    // Writing objects...
+    // Step 2 user's dbio_write_objid as simple %d via printf
+    rc=sqlite3_prepare_v2(db,
+                           "INSERT INTO USERS VALUES(:objid)",
+                           -1,&ppStmt,&pzTail
+                           );
+    for (i = 1; i <= nusers; i++){
+      int objid=user_list.v.list[i].v.obj;
+      sqlite3_reset(ppStmt);
+      sqlite3_bind_int(ppStmt, 1 , objid);
+      rc=sqlite3_step(ppStmt);
+      if( rc !=SQLITE_DONE  ){
+            errlog("Unable to store Users objids into users table %s\n", sqlite3_errmsg(db));
+            RAISE(dbpriv_dbio_failed, 0);
+      }
+    }
+    sqlite3_finalize(ppStmt);
+    // Step 3 write_object
+    {
+      oklog("%s: Writing %d objects+verbs+props...\n", reason, max_oid + 1);
+      sqlite3_stmt *insertStm;
+      rc=sqlite3_prepare_v2(
+                            db,
+                            "INSERT INTO object ( oid  "
+                            ", name "       
+                            ", flags "                    
+                            ", owner "
+                            ", location "
+                            ", contents "
+                            ", next "                    
+                            ", parent "
+                            ", child "
+                            ", sibling  ) VALUES (:oid"                           
+                            ", :name "       
+                            ", :flags "                    
+                            ", :owner "
+                            ", :location "
+                            ", :contents "
+                            ", :next "                    
+                            ", :parent "
+                            ", :child "
+                            ", :sibling"
+                            " ) ",
+                            -1,                           
+                            &insertStm,
+                            &pzTail
+                            );
+      if( rc!=SQLITE_OK ) {
+        errlog("Cannot build object insert statement");
+        RAISE(dbpriv_dbio_failed, 0);
+      }
+      for (oid = 0; oid <= max_oid; oid++) {
+        sql_write_object(db,insertStm,oid);
+      }
+      sqlite3_finalize(insertStm);
+    }
+    // Step 4 write verbs
+    // Step 5 write forked and suspend tasks...
+    // Step 6 write list of formely active connections...
+    
+  }
+  EXCEPT(dbpriv_dbio_failed)
+    success=0;
+  ENDTRY;
+  
+  rc = sqlite3_exec(db, "select * from moo ", sql_callback_dump, reason, &zErrMsg);
+  sqlite3_close(db);
+  
+  oklog("%s: SQLITE3 Dump on %s ended...\n", reason, sqliteDbFilename);
+  return success;
+}
+
+
+
+static int
 write_db_file(const char *reason)
 {
     Objid oid;
@@ -622,6 +864,10 @@ dump_database(Dump_Reason reason)
 		    log_perror("Renaming temporary dump file");
 		    success = 0;
 		}
+                //GG: SQLITE3 Integration: dump to sqlite3 database
+                if(!sql_write_db_file(reason_names[reason],dump_db_name)){
+                  log_perror("SQLITE3 DUMP FAILED");
+                }
 	    }
 	}
     } else {

@@ -18,3 +18,10 @@ may wish to read some or all of the following:
     How all of the statement/expression constructs in the language 
     translate to byte code.
 
+2018 02 18
+Sqlite3 addon
+Sqlite3 was added via the "amalgamation" version, which simplify a lot integration.
+Sqlite3 fits in db_file and db_io
+Step1 Sqlite3 provide a new dump file version
+
+

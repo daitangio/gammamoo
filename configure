@@ -5997,6 +5997,12 @@ $as_echo "$as_me: WARNING: Could not find libgcrypt: only (insecure) MD5 hashing
 	fi
 fi
 
+# GG: FIXME Consider optional -lpthread see
+# https://www.sqlite.org/howtocompile.html
+echo Adding sqlite3 libs
+MOOLIBS="$MOOLIBS -ldl"
+
+
 echo checking which MOO networking configurations are likely to work...
 
 NETWORK_CONFIGURATIONS="NP_SINGLE"

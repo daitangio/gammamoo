@@ -1,0 +1,2 @@
+Make it: gcc -DSQLITE_THREADSAFE=0 sqlite3.c shell.c -ldl -lm -o sqlite3
+Version: sqlite-amalgamation-3220000
