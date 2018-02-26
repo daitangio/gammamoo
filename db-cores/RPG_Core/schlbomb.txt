@@ -1,0 +1,83 @@
+@create $homer named school explosion bomb:explosion bomb, bomb
+@set explosion.build_help to {"Dig a room for the classroom hallway. Go to that room.", "Decide on the stat/skill/language to be taught. Be prepared to spell out the word completely & correctly, and add a tilde (~) to the end of any language name you chose.", "Decide on who will own the rooms.", "@set explosion.min to the lowest level of training (1-8)", "@set explosion.max to the highest level of training (1-8)", "Drop da bomb.", "Customize the rooms, if you want."}
+@describe explosion as "A shiny metal sphere. (Type 'help explosion' for instructions.)"
+@prop explosion.min 1 rc #2
+@prop explosion.max 8 rc #2
+
+@verb explosion:"dr*op th*row" this none none rxd #2
+@prog explosion:dr
+pass(@args);
+player.location:announce_all("tick...tick...tick");
+   lobby = this.location;
+   if ($object_utils:isa(lobby, $veroom) && !($object_utils:isa(lobby, $school)))
+      if (!player.wizard)
+         return player:tell("This bomb needs to be dropped by a wizard.");
+      elseif (length(lobby.virtual_exits) > 1)
+         return player:tell("There should only be one exit from this room. Remove the exits to other rooms and recycle the rooms if needed. If this is already the lobby of an existing school, you can clean it with the 'school implosion bomb'.");
+      elseif ($command_utils:yes_or_no("Do you know the stat or skill taught at this school, and the builder character you wish to own the rooms?"))
+         oname = $command_utils:read("who will own this school");
+         sname = $command_utils:read("which skill or stat will be taught (a blank response will be interpreted as general knowledge)");
+         if ($command_utils:player_match_failed((owner = $string_utils:match_player(oname)), oname))
+            return;
+         elseif (sname && !(sname in $rpgamer.skills[1]) && !(sname in $rpgamer.stats[1]) && !valid($school:match_lang(sname + "~")))
+            return player:tell("\"", sname, "\" is not a valid skill.");
+         elseif (($quota_utils:summarize_one_user(owner)[1] + 20000) > $quota_utils:get_quota(owner))
+            return player:tell("Increase the quota of ", $string_utils:nn(owner), " by about 20000 bytes and try again.");
+         else
+            chparent(lobby, $lobby);
+            english = {"One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight"};
+            for x in [this.min..this.max]
+               class = $recycler:_create($school, owner);
+               class:moveto(lobby.location);
+               $building_utils:set_names(class, tostr("Class Level ", x));
+               class.virtual_exits = {{{"Out [o]", "out", "o", "exit", "leave"}, lobby, 0}};
+               entrance = {{tostr(english[x], " [", x, "]"), english[x], tostr(x)}, class, 0};
+               lobby.virtual_exits = {@lobby.virtual_exits, entrance};
+               class.level = x;
+               class.skill = valid($school:match_lang(sname + "~")) ? (sname + "~") | sname;
+               if (sname[$] == "~")
+                  class.skill_cutoff_mod = 0.25;
+               else
+                  class.skill_cutoff_mod = 0.5;
+               endif
+            endfor
+            lobby:announce_all("[red]KA-BOOM![normal]");
+         endif
+      endif
+   else
+      return player:tell("This room has to have virtual exits and NOT be an existing classroom.");
+   endif
+.
+
+@create $homer named school implosion bomb:implosion bomb, bomb
+@set implosion.build_help to {"Drop da bomb in a hallway ($lobby) to erase any attached classrooms."}
+@describe implosion as "A shiny metal sphere. (Type 'help implosion' for instructions.)"
+@verb implosion:"dr*op th*row" this none none rxd #2
+@prog implosion:dr
+pass(@args);
+player.location:announce_all("tick...tick...tick");
+fork (2)
+   lobby = this.location;
+   if ($object_utils:isa(lobby, $lobby))
+      if (!player.wizard)
+         return player:tell("This bomb needs to be dropped by a wizard.");
+      else
+         exits = lobby.virtual_exits;
+         for e in (exits)
+            if ($object_utils:isa(e[2], $school))
+               lobby.virtual_exits = setremove(lobby.virtual_exits, e);
+               $recycler:_recycle(e[2]);
+            endif
+         endfor
+         lobby:announce_all("[cyan]SCHWOOOP![normal]");
+         if ($scheduler in player.features)
+            player:tell("\"@unsched garbage\" now to clear any unfinished business for the recycled rooms.");
+         else
+            player:tell("\"@addfeature $scheduler\" and then \"@unsched garbage\" to clear any unfinished business for the recycled rooms.");
+         endif
+      endif
+   else
+      return player:tell("This room has to be a descendant of $lobby.");
+   endif
+endfork
+.

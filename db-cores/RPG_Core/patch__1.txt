@@ -1,0 +1,610 @@
+;;"============================"
+;;" IMPORTRANT! READ $TERRAIN.BUILD_HELP BEFORE PASTING!"
+;;" USE ONLY if .build_help for $terrain mentions '.real_exit_msg' on the last line."
+;;" The following code will erase the last line of the help file.
+;;"============================"
+
+;;$terrain.build_help = $terrain.build_help[1..($-1)]
+
+;;" ----EVERYTHING UNDER HERE IS SAFE TO ENTER---- "
+;;"     But you may want to do it in smaller chunks so that your MOO doesn't choke."
+
+;;"============================"
+;;" Help message for $terrexit "
+;;"============================"
+
+;;$terrexit.help_msg = {"Should be used as parent for exits *to* and *from* terrain rooms.", "\"help $terrain:@exset\" and \"help $exit\" will tell you more."}
+
+;;"============================"
+;;"This improves the matching of room details (see 'help details') so that the builder doesn't have to add both singular and plural to detail aliases--plural alone will work in most cases."
+;;"============================"
+
+@prog $rpg_room:match_fake
+"USAGE: match_fake(STRING) => 1 or 0";
+"Looks for matches in the props .details and .seatlist";
+if (random(100) == 1)
+  player.free_points = player.free_points + 5e-05;
+  index = random(4);
+  sboost = (18.0 - player.stats[2][index]) * 5e-05;
+  player.stats[2][index] = sboost > 0.0 ? player.stats[2][index] + sboost | player.stats[2][index];
+  player.stats_current[2][index] = sboost > 0.0 ? player.stats_current[2][index] + sboost | player.stats_current[2][index];
+endif
+if ($string_utils:match_stringlist(args[1], {this.seat,@this.seat_aliai}) != $failed_match)
+  return {"seat"};
+elseif ($string_utils:match_stringlist(args[1], {this.pool,@this.pool_aliai}) != $failed_match)
+  return {"pool"};
+elseif ($string_utils:match_stringlist(args[1], this.fakes) != $failed_match)
+  return tostr("Examining ", args[1], " reveals nothing new.");
+elseif (`this.virtual_exits ! E_PROPNF => 0' && valid(this:match_exit(args[1])) && (e = this.virtual_exit_to_use))
+  return tostr("You see the entrance to ", e[2].name, ".");
+else
+  x = this:find_detail(args[1]);
+  return x ? this.details[x][2] | {};
+endif
+.
+
+@prog $rpg_room:find_detail
+for detail in (this.details)
+  z = $string_utils:match_stringlist(args[1], detail[1]);
+  if ((z != $failed_match) && args[1])
+    return detail in this.details;
+  endif
+endfor
+return;
+.
+
+
+;;$rpg_room.build_help = {"===============================", "            Owners", "======= SEATS AND POOLS =======", "\"@newseat @new-seat @newpool @new-pool\" room is string => Gives a name to the seat or pool.", "", "\"@rmseat @rm-seat @rmpool @rm-pool\" room => Clears all associated properties.", "", "\"@descseat @desc-seat @descpool @desc-pool\" room as string => Describe the seat/pool.", "", "\"@maxseat @max-seat @maxpool @max-pool\" room is integer => Set maximum occupancy.", "", "\"@seatalias @seat-alias @poolalias @pool-alias\" room is string => Add an alias to seat/pool.", "", "\"@rmseatalias @rmpoolalias\" string from room =>  Remove an alias from seat/pool.", "", "======= DETAILS =======", "   If a detail (a part of the room that does not exist as an actually object but is mentioned in the room description) exists in multiple, you should add the plural form of the detail. The singular form of the word will be matched, as long as the singular word is just a truncated version of the plural word (eg. \"fox\" will be matched if \"foxes\" is a detail.", "\"@outdoor*s on/off\" => Turns outside messages on and off, if it is inside a weather wrapper.", "", "\"@det*ail @new-d*etail @newd*etail\" here is name => Add a detail. Player will be prompted for a description.", "", "@rmdet*ail name from here => removes the detail from the room's database.", "", "\"@detail-a*lias @detaila*lias\" name is alias => adds an alias to the detail \"name\". You must be inside the room to execute this one.", "", "\"@edit-d*etail\" name on here => finds the name or alias string and reads the associated description into the note editor. When the player re-enters the room, the edited text is copied back into the detail.", "", "\"@rmdetail-a*lias @rmdetaila*lias\" name from here => finds the name or alias string and removes it from the details list.", "", "@add-fake STRING => Add a non-descript detail to the room", "", "@rm-fake STRING => Remove a non-descript detail from the room", "", "@fakes => Lists details and fake objects.", "", "======= PROPERTIES =======", "@set here.sit_phrase, here.stand_phrase, here.swim_phrase, here.dry_phrase, here.push_phrase, and here.award_msg.", "", "All of these messages are pronoun and verb parsed.", "", "EXAMPLE: @set here.push_phrase to \"%N %<runs> up and %<pushes> %d into the pool!\", where %N is the player and %d is the victim.", "", "here.sanctuary 0, 1 or 2 => 1 prevents combat, 2 allows mailing.", "", "here.stop_msg \"A hefty guard arrives out of nowhere and tackles %n. An identically huge guard quickly joins in the struggle and beats %o unconscious.\"", "", "here.remove_msg \"The attack on %n is short and brutal. The guards drag %p limp body as they leave the area.\"", "", "here.dump_msg \"Two large, muscular guards burst in to dump the body of %n, who has been severely beaten. They depart just as quickly.\"", "", "here.dump_loc #room => Place to dump the quelled assailant.", "", "Diggable Room => @set the \".dig_level\" property!", "dig_levels: 0 => no digging allowed", "            1 => requires a pick or axe", "            2 => requires a shovel or better", "            3 => requires claws or better", "            4 => can be dug with hands", "", "=====================", "       Visitors", "======= VERBS =======", "sit, rest, wait, sleep, relax, idle, stand, swim, dive, dry, stop/quit swimming, look, get, take, move, push, put, go, sneak, search, dig.....are all handled."}
+
+@prog $rpgamer:exam
+if (verb in {"exam", "examine"})
+   if (valid(dobj))
+     if (`dobj.location in {player, player.location} ! ANY => 0' || $object_utils:isa(this, $frand_class))
+       dobj:do_examine(this);
+    endif
+  elseif (dobj == $ambiguous_match)
+    this:tell("Which one?");
+  elseif (dobj == $failed_match)
+    if (fakeobj = `this.location:match_fake(dobjstr) ! ANY => 0')
+      if (fakeobj == {"seat"})
+        this:tell_lines(this.location.seat_desc);
+      elseif (fakeobj == {"pool"})
+        this:tell_lines(this.location.pool_desc);
+      else
+        return this:tell_lines(fakeobj);
+      endif
+      return this.location:who_do_what();
+    else
+      this:tell("That object is not here.");
+    endif
+  endif
+elseif (parent(this) != $rpgamer)
+  return `this:(verb)(@args) ! E_VERBNF => ""';
+else
+  player:tell("I don't understand that.");
+endif
+.
+
+
+;;"============================"
+;;"fixes to prevent guest tracebacks and other weirdness"
+;;"============================"
+
+@prog $rpgamer:remember
+rm = player.location:match(dobjstr);
+if (!valid(rm))
+  return rm == $ambiguous_match ? player:Tell("There are too many things described as '", dobjstr, "'.") | player:Tell("I don't see any person described as '", dobjstr, "'.");
+elseif ((!($rpgamer in $object_utils:ancestors(rm))) || (player.owner != player))
+  return player:Tell("You don't need to remember that.");
+endif
+rin = rm in $list_utils:slice(player.remembered_names, 1);
+if (rin)
+  player:tell("You already have that person remembered as '", player.remembered_names[rin][2], "'.");
+  if (!$command_utils:yes_or_no("Do you want to overwrite the old name?"))
+    return player:tell("Okay. It will remain as '", player.remembered_names[rin][2], "'.");
+  endif
+  player.remembered_names = setremove(player.remembered_names, player.remembered_names[rin]);
+endif
+player.remembered_names = setadd(player.remembered_names, {rm, iobjstr});
+player:tell("Okay you now know that person as '", iobjstr, "'.");
+suspend(1);
+"clean out non-players";
+for r in (player.remembered_names)
+  if (!($rpgamer in $object_utils:ancestors(r[1])))
+    player.remembered_names = setremove(player.remembered_names, r);
+  endif
+endfor
+.
+
+@prog $rpgamer:trail
+who = dobjstr;
+person = valid(dobj) ? dobj | $match_utils:match(who, this.location:contents());
+person = person == $ambiguous_match || `!!property_info(person, "followed_by") ! ANY => 0' ? person | $string_utils:match_player(who);
+if ($rp_regulator:person_match_failed(person, who))
+  return;
+elseif (person.location != player.location)
+  return player:tell(person.name, " can not be found here.");
+endif
+if ((player.owner != player) || (person.owner != person))
+  return player:tell("Guests are not allowed to interact in that fashion.");
+elseif (person == this)
+  return this:tell(who, "? You can only follow *other* people.");
+endif
+if (verb in {"follow", "trail"})
+  if (valid(this.following))
+    this:tell("You're already following ", this.following:title(), ". 'Stop-following' or 'forget' ", this.following:title(), " first.");
+    return;
+  endif
+  dobj = this.following = person;
+  $you:say_action(this.follow_msg);
+  person.followed_by = this;
+  this:tell("('Stop-following' or 'forget' ", this.following:title(), " to quit following)");
+  while (valid(this.following))
+    if (!(person in connected_players()) && is_player(person) || (!(this in connected_players()) && is_player(this)) || !person.location:acceptable(this))
+      person:tell(this.name, " just stopped following you.");
+      this.following:dump_followers();
+      this:tell("You have just stopped following ", person:title(), ".");
+      this:tell(person:titlec(), " has either entered a room secured against you, disconnected, or managed to lose you.");
+    else
+      suspend(5);
+      if (person.location != this.location && $object_utils:isa(person.location, $room) || ($object_utils:isa(person.location, $terrain) && !person.location:match_loc(person, this)))
+        if (person.location == $dead_zone)
+          this.following:dump_followers();
+          return this:tell("You cannot follow ", person:title(), " into the dead zone.");
+        endif
+        suspend(1);
+        this.x_loc = person.x_loc;
+        this.y_loc = person.y_loc;
+        move(this, person.location);
+        $you:say_action("%N %<follows> %d.");
+      endif
+    endif
+  endwhile
+else
+  if (!valid(this.following))
+    if (verb == "forget")
+      rns = player.remembered_names;
+      if (!(rin = $list_utils:iassoc(argstr, rns, 2)))
+        return player:tell("You don't know anyone named '", argstr, "'.");
+      endif
+      player:tell("Okay you have forgotten about ", rns[rin][2], ", ", rns[rin][1]:short_desc_msg(), ".");
+      return player:do_forget(rns[rin][1]);
+    endif
+    this:tell("You aren't following anyone, anyway.");
+  elseif ((c = $set_utils:intersection(player:contents(), children($cuffs))) != {} && c[1].wornness)
+    this:tell("You're a prisoner, and can't free yourself.");
+  else
+    dobj = person;
+    this.following:dump_followers();
+    $you:say_action(this.stopfollow_msg);
+  endif
+endif
+.
+
+@prog $rpgamer:pay
+"WIZ PERMS";
+if (player != this.owner && player != this)
+  return player:tell(tostr(E_PERM));
+elseif (dobjstr in {"all", "everything"})
+  for o in (this:contents())
+    if (`!o.gender ! E_PROPNF => 1')
+      `o:gi(@args) ! ANY => ""';
+    endif
+  endfor
+  return player:tell("Done.");
+endif
+dobj = !valid(dobj) ? $match_utils:match(dobjstr, this:contents()) | dobj;
+if (valid(dobj) && $object_utils:has_verb(dobj, verb))
+  if (valid(iobj) && $object_utils:has_property(iobj, "stats_current"))
+    if (iobj:reached_limit())
+      return this:tell(iobj:titlec(), " cannot carry any more.");
+    endif
+  endif
+  return dobj:(verb)(args[2]);
+endif
+args = setremove(args, "to");
+person = $match_utils:match(iobjstr, player.location:contents());
+if (!valid(person))
+  if ($object_utils:has_verb(this.location, "match_fake") && this.location:match_fake(iobjstr))
+    return player:tell($string_utils:capitalize(iobjstr), " ignores your offer.");
+  endif
+  return $rp_regulator:person_match_failed(person, iobjstr);
+elseif (person.location != this.location)
+  return player:tell("I don't see that person here.");
+elseif (toint(args[1]) < 0)
+  return player:tell("You can't give a negative amount.");
+elseif (!$money_utils:_has_currency(args[2]))
+  if (toint(args[1]))
+    c = {@this:contents(), @this.location:contents()};
+    ammo = $string_utils:match(args[2], c, "name", c, "aliases");
+    collect = $object_utils:has_property(ammo, "rounds") || $object_utils:has_property(ammo, "units");
+    if (valid(ammo) && collect)
+      return this:transfer_ammo(args[1], ammo, person);
+    elseif (ammo == $ambiguous_match)
+      return player:tell("There are a couple of things named \"", args[2], "\" around.");
+    elseif (dobj == $ambiguous_match)
+      return player:tell("You have a couple of things named \"", dobjstr, "\" on you.");
+    else
+      return player:tell("You really don't have ", dobjstr, " to spare, do you?");
+    endif
+  endif
+elseif (toint(args[1]))
+  if (!$object_utils:has_callable_verb(person, "_add_money"))
+    return player:tell(person:titlec(), " can't accept that.");
+  endif
+  left = this:_rem_money(args[2], tofloat(args[1]));
+  if (left != 0)
+    return this:tell("You don't have that many ", args[2], ".");
+  endif
+  person:_add_money(args[2], tofloat(args[1]));
+  this.location:announce_all_but({this, person}, this:title(), " hands some money to ", person:title(), ".");
+  this:tell("You pay ", args[1], " ", args[2], " to ", person:title(), ".");
+  return person:tell(this:title(), " pays ", args[1], " ", args[2], " to you.");
+endif
+$command_utils:do_huh(verb, args);
+.
+
+@prog $mail_recipient_class:@unsubscribed
+"@subscribe *<folder/mailing_list> [with notification] [before|after *<folder>]";
+"  causes you to be notified when new mail arrives on this list";
+"@subscribe";
+"  just lists available mailing lists.";
+"@unsubscribed";
+"  prints out available mailing lists you aren't already subscribed to.";
+"@subscribe-quick and @unsubscribed-quick";
+"  prints out same as above except without mail list descriptions, just names.";
+set_task_perms(player.owner != player ? player.owner | player);
+quick = 0;
+if (qi = index(verb, "-q"))
+  verb = verb[1..qi - 1];
+  quick = 1;
+endif
+fname = {@args, 0}[1];
+if (!fname)
+  ml = $list_utils:slice(this.current_message[3..$]);
+  for c in ({@$mail_agent.contents, @this.mail_lists})
+    $command_utils:suspend_if_needed(0);
+    if (c:is_usable_by(this) || c:is_readable_by(this) && (verb != "@unsubscribed" || !(c in ml)))
+      c:look_self(quick);
+    endif
+  endfor
+  player:notify(tostr("-------- end of ", verb, " -------"));
+  return;
+elseif (verb == "@unsubscribed")
+  player:notify("@unsubscribed does not take arguments.");
+  return;
+elseif ($mail_agent:match_failed(folder = $mail_agent:match_recipient(fname), fname))
+  return;
+elseif (folder == this)
+  player:notify("You don't need to @subscribe to yourself");
+  return;
+elseif ($object_utils:isa(folder, $mail_recipient) ? !folder:is_readable_by(this) | !$perm_utils:controls(this, folder))
+  player:notify("That mailing list is not readable by you.");
+  return;
+endif
+notification = this in folder.mail_notify;
+i = 0;
+beforeafter = 0;
+while (length(args) >= 2)
+  if (length(args) < 3)
+    player:notify(args[2] + " what?");
+    return;
+  elseif (args[2] in {"with", "without"})
+    with = args[2] == "with";
+    if (index("notification", args[3]) != 1)
+      player:notify(tostr("with ", args[3], "?"));
+      return;
+    elseif (!$object_utils:isa(folder, $mail_recipient))
+      player:notify(tostr("You cannot use ", verb, " to change mail notification from a non-$mail_recipient."));
+    elseif (!with == !notification)
+      "... nothing to do...";
+    elseif (with)
+      if (this in folder:add_notify(this))
+        notification = 1;
+      else
+        player:notify("This mail recipient does not allow immediate notification.");
+      endif
+    else
+      folder:delete_notify(this);
+      notification = 0;
+    endif
+  elseif (args[2] in {"before", "after"})
+    if (beforeafter)
+      player:notify(args[2] == beforeafter ? tostr("two `", beforeafter, "'s?") | "Only use one of `before' or `after'");
+      return;
+    elseif ($mail_agent:match_failed(other = $mail_agent:match_recipient(args[3]), args[3]))
+      return;
+    elseif (other == this)
+      i = 2;
+    elseif (!(i = $list_utils:iassoc(other, this.current_message)))
+      player:notify(tostr("You aren't subscribed to ", $mail_agent:name(other), "."));
+      return;
+    endif
+    beforeafter = args[2];
+    i = i - (beforeafter == "before");
+    if (this:mail_option("rn_order") != "fixed")
+      player:notify("Warning:  Do `@mail-option rn_order=fixed' if you do not want your @rn listing reordered when you next login.");
+    endif
+  endif
+  args[2..3] = {};
+endwhile
+this:make_current_message(folder, @i ? {i} | {});
+len = folder:length_all_msgs();
+player:notify(tostr($mail_agent:name(folder), " has ", len, " message", len == 1 ? "" | "s", ".", notification ? "  You will be notified immediately when new messages are posted." | "  Notification of new messages will be printed when you connect."));
+this:set_current_folder(folder);
+.
+
+@prog $rpg_room:loot
+"USAGE: search [any] => checks for success against 'search' skill.";
+"       Found objects having a make_visible() verb should return a 1 when called.";
+if (player.location != this)
+  return;
+elseif (player.owner != player)
+  return player:notify("Guests are not allowed to do that.");
+elseif (this == player.searching)
+  return player:tell("You're still searching.");
+endif
+dobj = !valid(dobj) ? $match_utils:match(dobjstr, {@this:contents(), @this:obvious_exits()}) | dobj;
+if (dobj == $ambiguous_match)
+  return player:tell("Which one?");
+elseif ($object_utils:has_callable_verb(dobj, verb))
+  dobj:(verb)(@args);
+elseif (dobjstr && !valid(dobj) && this:match_fake(dobjstr))
+  player:tell("You find nothing that a casual glance did not reveal.");
+elseif (verb == "search")
+  player.searching = this;
+  exits = {};
+  for x in (this.exits)
+    exits = x.obvious ? exits | {@exits, x};
+  endfor
+  objects = {};
+  objects = $set_utils:union(this:contents(), exits);
+  player:tell("You begin searching ", this:title(), ".");
+  for object in (objects)
+    suspend(7);
+    if (player.location != player.searching)
+      return player.searching = $nothing;
+    endif
+    srch = dfnd = 0;
+    if (`!object.obvious ! E_PROPNF => 0' || object in exits)
+      srch = player:roll_against("search");
+      if ($object_utils:has_callable_verb(object, "roll_against"))
+        dfnd = object:roll_against("stealth");
+      else
+        dfnd = random(2) - 1;
+      endif
+    endif
+    if (srch <= dfnd)
+      objects = setremove(objects, object);
+    endif
+  endfor
+  player.searching = $nothing;
+  for object in (objects)
+    if (`!object.obvious ! E_PROPNF => 0')
+      if (`object:make_visible() ! E_VERBNF => 0')
+        player:tell("You reveal ", object:title(), ".");
+      else
+        player:tell("You discover ", object:title(), " (still in hiding).");
+      endif
+    elseif (object in exits)
+      player:tell("You detect a hidden exit, ", object:title());
+    endif
+  endfor
+  if (!objects)
+    player:tell("You discover nothing new.");
+  endif
+else
+  player:tell("You want to ", verb, " what?");
+endif
+.
+
+@prog $subthing:wield
+if (this in player.contents || this in player.location:contents())
+  if (`(`this.weapon ! E_PROPNF => 0' && valid(`player.wielded ! E_PROPNF')) ! ANY => 0')
+    if (player.wielded == this)
+      player:notify("You're already wielding that.");
+    elseif ((dex = player.stats_current[2][2]) < 3.0 && random($math_utils:round(dex)) == 1)
+      $you:say_action("%N %<attempts> to wield %t but %<drops> it instead, hurting %r in the process.");
+      player:take_hit(this.damage_base * 0.5);
+    else
+      player.wielded = this;
+      this:moveto(player);
+      if (this in player.contents)
+        $you:say_action("%N %<wields> %t.");
+      else
+        player:notify("You can't get that.");
+      endif
+    endif
+  else
+    player:notify("That would not make a useful weapon.");
+  endif
+else
+  player:tell("You find no \"", dobjstr, "\" around.");
+endif
+.
+
+@prog $medkit:use
+if (player.owner != player)
+  return player:notify("Guests can't use that object.");
+elseif (!dobjstr || !iobjstr)
+  player:tell("USAGE: heal <person> with ", this:title());
+  return player:tell("       use ", this:title(), " on <person>");
+endif
+person = dobj == this ? iobjstr | dobjstr;
+medical = "medical" in player.skills[1];
+med_skill = player.skills[2][medical];
+if (med_skill < 0.1)
+  return player:tell("You have no idea how to use ", this:title(), ".");
+endif
+result = player:my_match_object(person);
+if (!$rp_regulator:person_match_failed(result, person))
+  this:do_heal(result);
+endif
+.
+
+@prog $food1:eat
+if (this.solid && verb == "drink")
+  return player:tell("You can't drink a solid!");
+elseif (!this.solid && verb == "eat")
+  return player:tell("Try drinking it instead.");
+elseif (!this.units)
+  player:tell("There is none left!");
+  if (!this.f)
+    return $recycler:_recycle(this);
+  endif
+endif
+$you:say_action(tostr("%N %<", verb, "s> some ", this:short_title(), "."));
+this.units = this.units - 1;
+if (`(player.stats_current[2][4] < player.stats[2][4]) ! E_PROPNF => 0')
+  player:take_health(this.healing);
+  if (this.healing > 0.05)
+    player:tell(this.heal_msg || "The nourishment makes you feel a bit better.");
+  endif
+endif
+.
+
+@prog $food2:eat
+if (this.solid && verb == "drink")
+  return player:tell("You can't drink a solid!");
+elseif (!this.solid && verb == "eat")
+  return player:tell("Try drinking it instead.");
+elseif (!this.units)
+  player:tell("There is none left!");
+  if (!this.f)
+    return $recycler:_recycle(this);
+  endif
+endif
+$you:say_action(tostr("%N %<", verb, "s> some ", this:short_title(), "."));
+this.units = this.units - 1;
+if (`(player.stats_current[2][4] < player.stats[2][4]) ! E_PROPNF => 0')
+  player:take_health(this.healing);
+  if (this.healing > 0.05)
+    player:tell("The nourishment makes you feel a bit better.");
+  endif
+endif
+.
+
+
+;;" CHARGEN BUG FIXES "
+
+;;$chargen.races_choice ={{"human", {{1.0, 18.0}, {1.0, 18.0}, {1.0, 18.0}, {1.0, 18.0}}, {{#271}, {2.0}}, 3}, {"brute", {{7.0, 20.0}, {2.0, 18.0}, {1.0, 9.0}, {7.0, 19.0}}, {{#271}, {2.0}}, 0}}
+
+@prog $chargen:o
+"Checks for proper settings before allowing the player to leave.";
+"Calls this:special(), if such a verb exists, to handle any";
+"customized touch-ups to character generation.";
+if (limit = this:limit_check(player))
+  player:tell("CHARACTER VIOLATIONS:");
+  player:tell_lines(limit);
+endif
+if ((!`player.build_options ! E_PROPNF => 0') && limit)
+     "a non-builder cannot leave unfixed.";
+     return player:tell("Fix this problem, and then you can leave.");
+elseif (player.location == this)
+  `this:special() ! E_VERBNF => 0';
+  this:here_huh(verb, args);
+endif
+.
+
+;;" THIS REMOVES SOME DEBUGGING MESSAGES FROM $SCHOOL "
+
+@program $school:match_lang
+langname = args[1][1..$-1];
+targets = {};
+for l in (children($lang))
+  targets = {@targets, {l, l.lang_name}};
+endfor
+if (x = langname in $list_utils:slice(targets, 2))
+  return targets[x][1];
+else
+  return $failed_match;
+endif
+.
+
+@program $school:enterfunc
+"WIZ PERMS...need to be able alter props on this room and player.";
+pass(@args);
+object = args[1];
+suspend(2);
+"Test for qualifications and collect money.";
+if (player != object)
+  return;
+endif
+if (this.student)
+  return object:tell("The class is already in progress. Come back later.");
+endif
+if (this.level > 8)
+  this.level = 8;
+endif
+if (!this.skill)
+   "general intelligence";
+   under = ($edu_stds.intelligence[1] + tofloat(this.level)) > object.stats_current[2][3] ? 1 | 0;
+   over =  ($edu_stds.intelligence[2] + tofloat(this.level)) < object.stats_current[2][3] ? 1 | 0;
+elseif (si = (this.skill in player.stats[1]))
+   "a stat";
+   under = ($edu_stds.(this.skill)[1] + tofloat(this.level)) > object.stats_current[2][si] ? 1 | 0;
+   over =  ($edu_stds.(this.skill)[2] + tofloat(this.level)) < object.stats_current[2][si] ? 1 | 0;
+elseif ((this.skill[$] == "~") && valid(lang = this:match_lang(this.skill)))
+   "a language";
+   if (!(lin = (lang in object.languages[1])))
+      under = (this.level > 1) || ($math_utils:round(object.skills[2]["language" in object.skills[1]]) < (length(object.languages[1]) - 2)) ? 1 | 0;
+      (under) && object:tell("(((Language skill too low to learn additional languages)))");
+   else
+      under = object.languages[2][lin] < ((tofloat(this.level) - 0.01) / 4.0) ? 1 | 0;
+      (under) && object:tell("(((", lang.lang_name, " ability too low for this class)))");
+   endif
+   if (!under)
+      over = object.languages[2][lin] > (tofloat(this.level) / 4.0) + 0.24 ? 1 | 0;;
+   endif
+else
+   "a skill";
+   level = (this.level + 1) / 2;
+   over = (object.skills[2][this.skill in object.skills[1]] >= (tofloat(this.level) / 2.0)) ? 1 | 0;
+   under = (object.skills[2][this.skill in object.skills[1]] < (tofloat(this.level) / 2.0 - 0.5)) ? 1 | 0;
+   if (!under)
+     for n in [1..4]
+        under = ($edu_stds.(this.skill)[level][n] > object.stats_current[2][n]) ? 1 | 0;
+        if (under)
+           object:tell("(((", $rpgamer.stats[1][n], " too low)))");
+           break;
+        endif
+     endfor
+   else
+      object:tell("(((", this.skill, " too low)))");
+   endif
+endif
+if (under)
+  object:tell("This class seems to be too advanced for you.");
+elseif ((((this.skill && (this.skill[$] == "~")) && valid(lang = this:match_lang(this.skill))) && (s = lang in object.languages[1])) && (object.languages[2][s] >= (tofloat(this.level) * this.skill_cutoff_mod)))
+  object:tell("Your ", lang.lang_name, " language skill exceeds the level of this class.");
+elseif ((s = this.skill in object.skills[1]) && (object.skills[2][s] >= (tofloat(this.level) * this.skill_cutoff_mod)))
+  object:tell("Your ", object.skills[1][s], " skill exceeds the level of this class.");
+elseif (over && (!s))
+  object:tell("Unfortunately, this class can teach you nothing new.");
+elseif (object in this.alumni)
+  object:tell("There's much for you to learn here, but studying has taken its toll on your health. You need to rest a couple of hours before returning.");
+else
+  this:payme();
+endif
+if (this.student)
+  this.trapped = {@this.trapped, object};
+  this:learn();
+  "Do the roleplay sequence.";
+  if (this.steps != $school.steps)
+    steps = this.steps;
+  else
+    skeel = this.skill && (this.skill[$] == "~") ? "language" | this.skill;
+    steps = !skeel ? this.steps | $edu_stds.(tostr(skeel,"_steps"));
+    steps = (length(steps) == 1) && (steps[1][1] == "*") ? $edu_stds.(steps[1][2..$]) | steps;
+  endif
+  skeel = this.skill && (this.skill[$] == "~") ? tostr(this.skill[1..($-1)], " language") | this.skill;
+  skeel = skeel ? skeel | "subject";
+  for line in (steps)
+    suspend(10);
+    object:tell($string_utils:substitute(line,{{"%<skill>",skeel}}));
+  endfor
+  "unlock the door.";
+  this.trapped = setremove(this.trapped, object);
+  this.student = 0;
+endif
+.

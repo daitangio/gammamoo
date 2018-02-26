@@ -1,0 +1,229 @@
+;"============================================================="
+;"=======  ADDS HTML TRANSLATION TO ANSI COLOR SYSTEM  ========"
+;"============================================================="
+
+;"=== This upgrade was written specifically for serving        "
+;"=== MOOzilla v. 0.9.5                                        "
+;"=== http://www.moo.ca/moozilla                               "
+;"===                                                          "
+;"=== However, the few HTML tags that get through this filter  "
+;"=== do not nearly approach the number of tags that MOOzilla  "
+;"=== can handle. Customization of $ansi_utils.filter_subs     "
+;"=== will be your prerogative.                                "
+;"===                                                          "
+;"=== 1) Translates ANSI color to HTML color.                  "
+;"=== 2) Allows the service of inline HTML tags such as tables,"
+;"===    images, links, and centering.                         "
+;"=== 3) Creates a fix for text inside of < > that is lost     "
+;"===    when MOOzilla interprets it as a tag.                 "
+;"=== 4) Updates help files.                                   "
+;"=== 5) Includes a script for installing a guided setup room  "
+;"===    to make changes easier.                               "
+
+@prop $root_class.html "" rc #2
+@prop $ansi_utils.html_start "" rc #36
+@prop $ansi_utils.html_end "" rc #36
+
+;;$ansi_utils.html_start = "<CENTER><TABLE><TR><TD height=62 bgcolor=\"black\">"
+;;$ansi_utils.html_end = "</TD></TR></TABLE></CENTER>"
+
+@prog $root_class:description
+if (!(`("html" in player.ansi_options) ! E_PROPNF => 0') || !this.html)
+  return this.description;
+else
+  html = ($ansi_utils.html_start) ? $ansi_utils.html_start + this.html + $ansi_utils.html_end | this.html;
+  if (typeof(desc = this.description) == STR)
+    return html + desc;
+  elseif (length(desc) > 1)
+    return {html + desc[1], @desc[2..$]};
+  else
+    return html + desc[1];
+  endif
+endif
+.
+
+@prop $ansi_utils.filter_subs {} !c #36
+;;$ansi_utils.filter_subs = {{"<", "< "}, {"< font ", "<font "}, {"< img ", "<img "}, {"< a ", "<a "}, {"< table", "<table"}, {"< tr", "<tr"}, {"< td", "<td"}, {"< center", "<center"}, {"< /", "</"}}
+
+@prog $ansi_utils:notify
+":notify (OBJ player, STR line[, extra parameters for notify])";
+set_task_perms(caller_perms());
+plr = args[1];
+line = args[2];
+"...use property_info() instead of $object_utils:isa to save ticks...";
+if (index(line, "[") && valid(plr) && property_info(plr, "ansi_options") && this.active && !(task_id() in this.noansi_queue) && !plr:ansi_option("ignore"))
+  codes = typeof(z = plr.replace_codes) == NUM ? this.replace_code_pointers[z] | z;
+  esc = plr:ansi_option("escape");
+  while (m = match(line, this.notify_regexp))
+    z = line[m[1] + 1..m[2] - 1];
+    z == "random" && (z = this.random_colors[random(length(this.random_colors))]);
+    "*****HTML CODE*****";
+    if (plr:ansi_option("html"))
+       line[m[1]..m[2]] = z in codes ? this:get_html_code(z) | "";
+    else
+       line[m[1]..m[2]] = z in codes ? this:get_code(z, esc) | "";
+    endif
+    "*****END HTML*****";
+  endwhile
+  line = strsub(line, "[null]", "");
+  if (plr:ansi_option("html"))
+    line = strsub(line, "\"><font", "\"");
+  endif
+endif
+if (plr:ansi_option("filter_tags"))
+  for pair in (this.filter_subs)
+    line = strsub(line, pair[1], pair[2]);
+  endfor
+endif
+return notify(plr, line, @args[3..length(args)]);
+.
+
+@verb $ansi_utils:get_html_code this none this rx #36
+@prog $ansi_utils:get_html_code
+if (args[1] == "normal")
+   return "</font>";
+endif
+tags = {@this.group_bold, @this.group_colors};
+codes = {"size=\"+1\"", "", "size=\"+1\"", "", "color=\"red\"", "color=\"green\"", "color=\"yellow\"", "color=\"#2222FF\"", "color=\"blue\"", "color=\"#00DDDD\"", "color=\"#666666\"", "color=\"#666666\"", "color=\"#DD00DD\"", "color=\"white\""};
+return tostr("<font ", codes[args[1] in tags || 2], ">");
+.
+
+@verb $ansi_utils:player_wrap_off this none this rx #2
+@prog $ansi_utils:player_wrap_off
+if (caller == player)
+  force_input(player, "@wrap off");
+endif
+.
+
+@prog $ansi_options:actual
+if (args[1] == "all")
+  return {{"colors", a = args[2]}, {"extra", a}, {"misc", a}, {"blinking", a}, {"bold", a}, {"ignore", 0}, {"html", 0}};
+elseif (args[1] == "none")
+  return {{"colors", a = !args[2]}, {"extra", a}, {"misc", a}, {"blinking", a}, {"bold", a}, {"html", 0}};
+elseif (args[1] == "html")
+  return {{"html", a = args[2]}, {"colors", 1}, {"extra", 0}, {"misc", 0}, {"blinking", 0}, {"bold", 1}, {"ignore", 0}};
+else
+  return {args};
+endif
+.
+
+@prog $ansi_pc:@ansi-o
+"@ansi-option <option> [is] <value>   sets <option> to <value>";
+"@ansi-option <option>=<value>        sets <option> to <value>";
+"@ansi-option +<option>     sets <option>   (usually equiv. to <option>=1";
+"@ansi-option -<option>     resets <option> (equiv. to <option>=0)";
+"@ansi-option !<option>     resets <option> (equiv. to <option>=0)";
+"@ansi-option <option>      displays value of <option>";
+if (args && args[1] == "+html" && player.linelen > 0)
+    if (!$command_utils:yes_or_no("Long URLs will not work with word wrap on. Do you REALLY NEED word wrap?"))
+        $ansi_utils:player_wrap_off();
+    else
+        return player:tell("No change was made. Sorry, HTML will not parse correctly with word wrap turned on.");
+    endif
+endif
+if (!args)
+  player:notify_lines({"Current ANSI options:", "", @$ansi_options:show(this.ansi_options, $ansi_options.names)});
+  return;
+elseif (typeof(presult = $ansi_options:parse(args)) == STR)
+  player:notify(presult);
+  return;
+else
+  if (length(presult) > 1)
+    if (typeof(sresult = this:set_ansi_option(@presult)) == STR)
+      player:notify(sresult);
+      return;
+    elseif (!sresult)
+      player:notify("No change.");
+      return;
+    endif
+  endif
+  player:notify_lines($ansi_options:show(this.ansi_options, presult[1]));
+endif
+.
+
+
+;;$ansi_options:add_name("html", 1)
+
+@prop $ansi_options.show_html {"MOO client does not support inline HTML tags.", {"MOO client supports inline HTML.", "Translate color sequences into HTML."}} !c #36
+
+;;$ansi_options:add_name("filter_tags")
+
+@prop $ansi_options.show_filter_tags {"MOO client does not hide words inside < >.", "Add space after < to prevent client from hiding enclosed words."} !c #36
+
+
+;;$ansi_help.("ansi-options") = {"You can customize the way the ANSI Player Class works with the @ansi-options", "command.  The format of this command is:", "", "@ansi-option                         shows the ansi options", "@ansi-option <option> [is] <value>   sets <option> to <value>", "@ansi-option <option>=<value>        sets <option> to <value>", "@ansi-option +<option>               sets <option>", "@ansi-option -<option>               resets <option> (equiv. to <option>=0)", "@ansi-option !<option>               resets <option> (equiv. to <option>=0)", "@ansi-option <option>                displays value of <option>", "", "The ansi options available at this time are:", "", " [bold][green]colors[normal]        This option specifies whether the MOO will display", "               color sequences (such as [[null]blue] and [[null]red]).", "", " [bold][green]blinking[normal]      This option specifies whether the MOO will allow things to", "               blink on and off.  Most people find this annoying so they", "               keep this off most of the time.", "", " [bold][green]bold[normal]          This option specifies whether the MOO will allow bright", "               colors.  This probably isn't very useful unless you happen to", "               have a hangover (maybe from a MOO bash, right Chapman ;) and", "               the bright colors are hurting your eyes or something.", "               (Or unless you're using a stupid windoze client that", "                bolds as cyan.. gimme the name of a good freeware one", "                and I'll be happy.. -Grant)", "", " [bold][green]misc[normal]          This option specifies whether the MOO should display all the", "               ANSI codes not covered by the ones above.  This should usually", "               be on if any of the above ones are on and will probably cause", "               some very strange effects if it's not.", "", " [bold][green]extra[normal]         This option specifies whether the MOO will send certain", "               non-printable characters.  So far, this option only includes", "               beeps.  NOTE: these will probably work even if your terminal", "               is not ANSI compatable.", "", " [bold][green]all[normal]           This turns on all of the above options.  Equivalent to", "               '@ansi-options -none' except that it automatically does an", "               '@ansi-options -ignore'.", "", " [bold][green]none[normal]          This turns off all of the above options.  Equivalent to", "               @ansi-options -all", "", " [bold][green]escape[normal]        This option specifies what character the MOO will send for", "               an escape character.  The default is an ASCII character 27", "               but it can be set to another string in case control characters", "               won't get through to your terminal (like say if you are", "               multimooing from another MOO or something, see 'help", "               ansi-multimooing' for more information on that.)", "", " [bold][green]ignore[normal]        This option overrides all the other options and tells the", "               MOO to completely ignore any ANSI codes.  This means that you", "               will see the actual codes (like [[null]blue] or [[null]normal]) instead", "               of having them either translated or stripped out like normal.", "               This will probably screw up the line wrapping, text centering", "               and a bunch of other things and will probably be very spammy", "               but it's useful for checking the value of properties and", "               other things.", "", " [bold][green]no_connect_status[normal]", "               This option specifies whether the ANSI status message", "               will be displayed when you log on.", "", " [bold][green]html[normal]          This option will translate some of the ANSI codes to HTML", "               for clients that interpret inline HTML. It also", "               turns on HTML service through description() verbs.", "", " [bold][green]filter_tags[normal]   This option will make words encased in < >", "               readable when using an HTML client that interprets those", "               structures as tags and hides them."}
+
+;;$ansi_help.("ansi-codes") = {"The ANSI Player Class works by either translating codes into the ANSI sequences for them, or by stripping them out before sending the rest of the text to the player. An ANSI code is made up of the name of the code with a pair of brackets ([]'s) around it. Note to put codes into the documentation, they had to be put with a [[null]null] in between the letters, so something like [[[null]null]green] had to be written (and to make that.. sigh)", "", "These codes can be used in almost anything. MOOmail, messages, names, descriptions, and pages are all good places to put codes. ANSI codes are *not* allowed in player's names though because of all the problems this might cause. You can, however, use the new @ansi-title verb to put codes in your name.", "", "The codes are seperated into 5 main groups:", "", " [bold][yellow]colors[normal]     Codes that change the text to another color.  These include:", "            [[null]red], [[null]green], [[null]yellow], [[null]blue], [[null]purple], [[null]cyan],", "            [[null]gray], and [[null]white].  You can also use [[null]magenta] instead", "            of [[null]purple] and [[null]grey] instead of [[null]gray] but this isn't", "            recommended.  NOTE: [[null]gray] implies a [[null]bold] so if you have:", "            [[null]gray]This is gray.  [[null]red]This is red.[[null]normal]", "            The 'This is red.' will be bright red, you must put an", "            [[null]unbold] in front of it if you want it to be dark red.", "            These can be turned off with '@ansi-options -colors'.", "", " [bold][yellow]bold[normal]       Codes that make the text bright or not bright.  These include:", "            [[null]bold] and [[null]unbold].  You can also use [[null]bright] and", "            [[null]unbright] but, again, this is not recommended.  These can be", "            turned off with '@ansi-options -bold'.  This can be used to make", "            bright colors by putting a [[null]bold] in front of the color.", "            (for example, in: [[null]green]A[[null]bold]B[[null]red]C[[null]unbold]D[[null]normal]", "            the A would be dark green, the B would be bright green, the C", "            would be bright red, and the D would be dark red)", "", " [bold][yellow]blinking[normal]   Codes that turn on and off the blinking.  These include:", "            [[null]blink] and [[null]unblink].  They can be turned off with", "            '@ansi-options -blinking'.", "", " [bold][yellow]misc.[normal]      All the codes not covered by the ones above.  These include:", "            [[null]underline] and [[null]inverse].  NOTE: [[null]underline]", "            does not actually underline text on most computers.  These can", "            be turned off with '@ansi-options -misc'.", "", " [bold][yellow]extra[normal]      Codes that are not really ANSI and may work even if your", "            terminal is not ANSI compatable .  These include:", "            [[null]beep].  It can be turned off with '@ansi-options -extra'.", "", "With the HTML option turned on, only settings that can be recreated within a font tag will be translated. This is limited to colors, and an increase in font size for [[null]bold]."}
+
+;;$ansi_help.("ansi-intro") = {"This ANSI system was written and designed by Don Schwarz <darkowl@mcs.net> aka Dark_Owl.  HTML interpretation was added by George Hager <geocorona@yahoo.com>. It is composed of an ANSI Player Class ($ansi_pc), an ANSI utility package ($ansi_utils), an ANSI help database ($ansi_help), and an ANSI option database ($ansi_options).", "It converts ANSI 'codes', which are composed of a word surrounded by brackets ([]'s), into ANSI sequences which are recognized by most terminal programs and are used to display text in certain colors, underlined, inverse, and to make text blink.  Not all terminal programs support ANSI though so this will not work for everyone.", "", "You can put these ANSI codes in your descriptions, messages, mails, programs, and virtually anything else that is eventually sent through $player:notify().  See 'help ansi-codes' for a list of valid ANSI codes.", "", "The ANSI PC is controlled with the @ansi-options command, see 'help @ansi-options' for more information on it.", "", "To see a list of other ANSI help topics, see 'help ansi-index'."}
+
+;;$ansi_help.("ansi-porting") = {"[UPDATE 2002: This MOO is run from RPGCore, available at members.aol.com/geocorona/rpgmoo.html The core has ANSI pre-installed. The HTML package may be on a separate updater. The old information for obtaining ANSICore was removed because the links are no longer working.]", "", "  NOTE: While the ANSI system is activated in the core, all players", "    start out with the ANSI defaulting to off, so you will have to type", "    '@ansi-options +all' before you can see any color.", "", "To install the ANSI system on an already existing MOO, you will need the", "  installation script.  This file should be uploaded into the MOO as a non-wizard (usually the second character of the wizard installing the ANSI) and will port the objects and give you instructions on how to start up the automatic setup program. [UPDATE The original installation script is no longer easy to find.]"}
+
+@prop $ansi_help.html-tags "" rc #36
+;;$ansi_help.("html-tags") = {"Every object in the MOO has an .html property, which can be viewed with the invocation of an object's :description() verb. To turn this option on, type \"@ansi-o +html\". This ANSI option also converts color ANSI codes to HTML, and converts [[null]bold] to font size 4.", "", "If your MOO client is set to interpret HTML tags, words enclosed by less/greater symbols may be lost on screen. Turn off this option in your client settings if it becomes a problem."}
+
+;"========= Create ANSI/HTML Setup Room =========="
+
+@chparent here to $lobby
+
+@vdig [S]et,set,s|[B]ack,back,b,exit,out,e,o to Set Your Viewing Options
+
+set
+
+@describe here as "[red]This sentence is red.[normal]"
+;;player.location.html = "If you can read this, HTML is enabled."
+
+@verb here:enterfunc this none this rxd #2
+@prog here:enterfunc
+"WIZ PERMS for force_input()";
+object = args[1];
+if (!(object in connected_players()))
+  "can't conduct an interview";
+elseif (`!!property_info(object, "ansi_options") ! E_PROPNF => 0')
+  client = 0;
+  while (!client)
+    object:notify("If you have an ANSI-color-compatible or inline HTML-compatible MOO client, you can choose one of the following to enable the features:");
+    object:notify("1) ANSI");
+    object:notify("2) HTML");
+    object:notify("3) neither");
+    object:notify("4) keep current settings");
+    response = $command_utils:read("your choice of features");
+    if (response in {"1", "a", "ANSI"})
+      client = 1;
+    elseif (response in {"2", "h", "HTML"})
+      client = 2;
+      object:notify("<***> If you can't see 3 asterices (***) before the first word \"if\", then your MOO client is stripping out words encased in < >. ");
+      $command_utils:yes_or_no("Can you see them?") || force_input(object, "@ansi-o +filter_tags");
+    elseif (response in {"3", "n", "neither", "no", "none", "0"})
+      client = 3;
+    elseif (response in {"4", "k", "keep", "current", "keep current", "keep current settings", "current settings"})
+      client = 4;
+    else
+      object:notify("**** Use a valid number or option! ****");
+    endif
+  endwhile
+  if (client == 1)
+    object.ansi_options = {};
+    force_input(object, "@ansi-o +colors");
+    force_input(object, "@ansi-o +bold");
+    suspend(1);
+    object:notify("Basic ANSI features enabled.");
+  elseif (client == 2)
+    object.ansi_options = "filter_tags" in object.ansi_options ? {"filter_tags"} | {};
+    force_input(object, "@ansi-o +html");
+    suspend(1);
+    object:notify("Basic HTML features enabled.");
+  elseif (client == 3)
+    force_input(object, "@ansi-o +none");
+    suspend(1);
+    object:notify("All special viewing features disabled.");
+  else
+    object:notify("No changes were made.");
+  endif
+  if (suspend(1) || client != 2)
+    object:notify("If you have a Netscape web browser, you can install the MOOzilla client, which will allow you to connect to the MOO and view images & tables through the browser. http://www.moo.ca/moozilla");
+  endif
+endif
+pass(@args);
+.
+

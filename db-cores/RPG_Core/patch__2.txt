@@ -1,0 +1,109 @@
+;"========================================="
+;"=======  VARIOUS BUG PATCHES #2  ========"
+;"========================================="
+
+@addnews last to $news
+
+@verb $player_start:description this none this rxd #36
+@prog $player_start:description
+if (player.owner != player)
+   guest_msg = tostr("  *** Enter \"help @request\" for information about getting a permanent character on ", $string_utils:capitalize($network.MOO_Name), " ***");
+   return typeof(this.description) == LIST ? {@this.description, "", guest_msg} | {tostr(this.description), "", guest_msg};
+endif
+return this.description;
+.
+
+@prog $guest:home
+if ((verb == "home") || (!$rp_regulator.do_restrict_guests))
+  return `player:(verb)(@args) ! E_VERBNF => ""';
+else
+  player:tell("Sorry, guests aren't allowed to peek at the details.");
+endif
+.
+
+@prog $rpg_room:enterfunc
+"WIZ PERMS";
+object = args[1];
+if (`object.alive ! E_PROPNF => 0' && random(100) == 1)
+  object.free_points = object.free_points + 5e-05;
+  index = random(4);
+  sboost = (18.0 - object.stats[2][index]) * 5e-05;
+  object.stats[2][index] = sboost > 0.0 ? object.stats[2][index] + sboost | object.stats[2][index];
+  object.stats_current[2][index] = sboost > 0.0 ? object.stats_current[2][index] + sboost | object.stats_current[2][index];
+endif
+fork (0)
+  if (`object.alert ! E_PROPNF => 0')
+    if (this.temp_detail_index && this.temp_detail_desc && object == this.owner)
+      this.details[this.temp_detail_index][2] = {@this.temp_detail_desc};
+      this.temp_detail_index = 0;
+      this.temp_detail_desc = {};
+    endif
+  elseif (object == this.blessed_object)
+    this.blessed_object = #-1;
+  endif
+  pass(@args);
+endfork
+.
+
+;"========== ANSI system bug fixes ==========="
+
+;;$ansi_options.show_none = {{"+none => Do not send any ANSI sequences.", "-none => Send all ANSI sequences."}}
+
+;;$ansi_options.show_all = {{"+all => Send all ANSI sequences.", "-all => Do not send any ANSI sequences."}}
+
+@prog $generic_options:show
+":show(options,name or list of names)";
+" => text describing current value of option and what it means";
+name = args[2];
+if (typeof(name) == LIST)
+  text = {};
+  for n in (name)
+    text = {@text, @this:show(@listset(args, n, 2))};
+  endfor
+  return text;
+elseif (!(name in this.names || name in this.extras))
+  return {"Unknown option:  " + name};
+elseif ($object_utils:has_callable_verb(this, sverb = "show_" + name))
+  r = this:(sverb)(@args);
+  value = r[1];
+  desc = r[2];
+elseif ($object_utils:has_property(this, sverb) && (value = this:get(args[1], name)) in {0, 1})
+  desc = this.(sverb)[value + 1];
+  if (typeof(desc) == STR)
+    desc = {desc};
+  endif
+elseif ($object_utils:has_property(this, cprop = "choices_" + name))
+  if (!(value = this:get(args[1], name)))
+    desc = this.(cprop)[1][2];
+  elseif (!(a = $list_utils:assoc(value, this.(cprop))))
+    return {name + " has unexpected value " + toliteral(value)};
+  else
+    desc = a[2];
+  endif
+elseif (name in this.extras)
+  return {name + " not documented (complain)"};
+else
+  value = this:get(args[1], name);
+  desc = {"not documented (complain)"};
+  if (typeof(value) in {LIST, STR})
+    desc[1..0] = toliteral(value);
+    value = "";
+  endif
+endif
+if (value in {0, 1})
+  which = "-+"[value + 1] + name;
+elseif (typeof(value) in {OBJ, STR, INT} && value != "")
+  which = tostr(" ", name, "=", value);
+else
+  which = " " + name;
+endif
+if (name in this.names)
+  show = {$string_utils:left(which + "  ", this.namewidth) + desc[1]};
+  for i in [2..length(desc)]
+    show = {@show, $string_utils:space(this.namewidth) + desc[i]};
+  endfor
+else
+  show = desc;
+endif
+return show;
+.

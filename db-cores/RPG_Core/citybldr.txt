@@ -1,0 +1,385 @@
+;;"This building tool only works with the RPG MOO Core"
+
+@create $container named Park City Builder, city builder, red button, button, builder, black box, box
+@prop $local.city_builder #-1 rc #2
+;;$local.city_builder = player:match("city builder")
+@describe park as "A flat black box with a single red button."
+;;$local.city_builder.build_help = {"This device can make the infrastructure of a large city with a central park, or a town of user-defined dimensions withou the park.", "Check the following properties before pushing the button:", "  .avenues <= A list of 20 N-S Avenue names, which will be filled in from West to East.", "  .streets <= A list of 20 E-W Street names, which will be filled in from North to South.", "  .corner_desc <= A description of the basic room. Each room will represent the corner of a street and an avenue.", "  .corner_fakes <= A list of unimportant objects mentioned in the room description, if they don't appear as actual objects, room.details, or as the room's seat. Plural forms alone can be used, if the singular form is a truncated version of that word (eg. \"ostriches\" can be used without adding \"ostrich\", but \"octopus\" must accompany \"octopi\")", "  .corner_details <= Fake objects with additional detail upon examination. See \"help detail\" for more info.", "  .corner_seats <= List of the seat name and its aliases, if any.", "  .corner_seat_desc <= A description of the seat detail, if any.", "  .park_desc <= A description to be used in each coordinate of the central park.", "  .park_fakes <= like .corner_fakes, but for each coordinate of the park.", "  .park_details <= Fake objects with additional detail upon examination. See \"help detail\" for more info.", "  .park_seats <= List of the seat name and its aliases, if any.", "  .park_seat_desc <= A description of the seat detail, if any.", "  .no_can_go_msg <= The message for blocked passages in the park."}
+@property park.avenues {"1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th", "13th", "14th", "15th", "16th", "17th", "18th", "19th", "20th"} rc #2
+@property park.streets {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"} rc #2
+@property park.corners {} rc #2
+@property park.corner_desc {"  The asphalt streets have concrete curbs and sidewalks, with a black metal lamppost at each sidewalk corner. Most of the streetfront facades are constructed of reddish brick."} rc #2
+@property park.corner_fakes {"streets", "sidewalks", "facades", "bricks"} rc #2
+@property park.corner_details {{{"lampposts", "lamps"}, {"Tapering upward, with the arches pointing toward the center of the intersection, each tipped with a halide lamp; the black fluted metal appears to be hollow iron."}}} rc #2
+@property park.corner_seats {"the curb", "curb", "curbs", "down"} rc #2
+@property park.corner_seat_desc "The curbs are molded concrete, marred from black auto tires and scraps of clinging trash." rc #2
+@property park.park_desc {"  Tall, thick oak and maple trees line the brick paths that meander through the park. A bench is conveniently located every few yards."} rc #2
+@property park.park_fakes {"trees", "oaks", "maples", "paths", "bricks"} rc #2
+@property park.park_details {} rc #2
+@property park.park_seats {"the bench", "bench"} rc #2
+@property park.park_seat_desc "The bench is constructed of wooden slats on a metal frame, and painted dark green." rc #2
+@property park.no_can_go_msg "Dense landscaping blocks the way." rc #2
+
+
+@verb park:"pr*ess pu*sh" any any any rxd #2
+@program park:pu
+$you:say_action("%N %<presses/press> the red button on a small black box. Bzzz!");
+if (!player.wizard)
+   return player:notify("This device will only work for a wizard.");
+elseif ($command_utils:yes_or_no("Do you really want to build a city, and have you decided on the builder character to own the rooms?"))
+   oname = $command_utils:read("who will own this school");
+   if ($command_utils:player_match_failed((owner = $string_utils:match_player(oname)), oname))
+      return player:notify("There is no such player (process aborted).");
+   elseif (owner.wizard)
+      return player:notify("The owner should not be a wizard (process aborted).");
+  endif
+   csize = $command_utils:yes_or_no("Will this be a large city with a central park?");
+   if (csize)
+      cname = "Park City";
+      horil = 19;
+      vertl = 19;
+   else
+      cname = "Gitterberg";
+      horil = 0;
+      while ((horil < 1) || (horil > 20))
+         horil = toint($command_utils:read("the distance across, East-West, in city blocks (20 max)"));
+      endwhile
+      vertl = 0;
+      while ((vertl < 1) || (vertl > 20))
+         vertl = toint($command_utils:read("the distance across, North-South, in city blocks (20 max)"));
+      endwhile
+   endif
+   if ((qneed = $quota_utils:summarize_one_user(owner)[1] + (horil * vertl) * 1750) > $quota_utils:get_quota(owner))
+      return player:tell("Increase the quota of ", $string_utils:nn(owner), " to about ", qneed, " bytes and try again.");
+   endif
+   cname = (cnom = $command_utils:read(tostr("what the city will be named (a blank response will result in the name \"", cname,"\")"))) ? $string_utils:capitalize(cnom) | cname;
+   woods = csize ? $command_utils:yes_or_no("Will the park be heavily wooded?") | 0;
+   player:notify("...prepping the realm wrapper");
+   city = $recycler:_create($realm, owner);
+   $byte_quota_utils:object_bytes(city);
+   oowner = this.owner;
+   $wiz_utils:set_owner(this, owner);
+   city:moveto(this);
+   suspend(1) || $wiz_utils:set_owner(this, oowner);
+   $building_utils:set_names(city, cname);
+   player:notify("...creating the generic street corner");
+   gen_corner = this:make_generic_corner(city, owner);
+   player:notify("...creating each row of streets, from North to South");
+   this.corners = {};
+   if (csize)
+      for street in [1..20]
+         this.corners = {@this.corners,{}};
+         for avenue in [1..20]
+            !(avenue%13) && !suspend(0) && player:tell("...building ", this.avenues[avenue], " Avenue & ", this.streets[street]," Street");
+            if (!((street > 6) && (street < 15) && (avenue > 6) && (avenue < 15)))
+               corner = $recycler:_create(gen_corner, owner);
+               $byte_quota_utils:object_bytes(corner);
+               corner:moveto(city);
+               vert = street < 11 ? "N. " | "S. ";
+               hori = avenue < 5 ? " West" | " East";
+               ticks_left() < 8000 && suspend(0);
+               $building_utils:set_names(corner, tostr(vert, this.avenues[avenue], " Avenue & ", this.streets[street]," Street", hori));
+               this.corners[street] = {@this.corners[street], corner};
+            endif
+         endfor
+      endfor
+      player:notify("...making e the central park");
+      park = $recycler:_create($terrain, owner);
+      $byte_quota_utils:object_bytes(park);
+      park:moveto(city);
+      $building_utils:set_names(park, tostr(cname," Park"));
+      park.description = this.park_desc;
+      park.fakes = this.park_fakes;
+      park.details = this.park_details;
+      park.seat = `this.park_seats[1] ! ANY => ""';
+      park.seat_aliai = `this.park_seats[2..$] ! ANY => {}';
+      park.seat_desc = this.park_seat_desc ? this.park_seat_desc | $veroom.seat_desc;
+      park.title_style = 1;
+      park.seat_max = `this.park_seats[1] ! ANY => 0' ? 4 | 1;
+      park.room_type = woods;
+      park.no_can_go_msg = this.no_can_go_msg;
+      player:notify("...making the corner virtual exits");
+      for y in [1..length(this.corners)]
+         for x in [1..length(this.corners[y])]
+            ticks_left() < 8000 && suspend(0);
+            room = this.corners[y][x];
+            "north dest";
+            if ((y == 7) && (x > 14))
+               north = this.corners[y - 1][x + 8];
+            elseif ((y == 15) && (x > 6) && (x < 15))
+               north = $nothing;
+            else
+               north = `this.corners[y - 1][x] ! ANY => $nothing';
+            endif
+            room.virtual_exits = valid(north) ? {@room.virtual_exits, {{"North [n]", "n", "North"}, north, 0}} | room.virtual_exits;
+            "south dest";
+            if ((y == 6) && (x > 6) && (x < 15))
+               south = $nothing;
+            elseif ((y == 14) && (x > 14))
+               south = this.corners[y + 1][x + 8];
+            else
+               south = `this.corners[y + 1][x] ! ANY => $nothing';
+            endif
+            room.virtual_exits = valid(south) ? {@room.virtual_exits, {{"South [s]", "s", "South"}, south, 0}} | room.virtual_exits;
+            "east dest";
+            if ((y > 6) && (y < 15) && (x == 6))
+               east = $nothing;
+            else
+               east = `this.corners[y][x + 1] ! ANY => $nothing';
+            endif
+            room.virtual_exits = valid(east) ? {@room.virtual_exits, {{"East [e]", "e", "East"}, east, 0}} | room.virtual_exits;
+            "west dest";
+           if ((y > 6) && (y < 15) && (x == 15))
+               west = $nothing;
+            else
+               west = `this.corners[y][x - 1] ! ANY => $nothing';
+            endif
+            room.virtual_exits = valid(west) ? {@room.virtual_exits, {{"West [w]", "w", "West"}, west, 0}} | room.virtual_exits;
+         endfor
+      endfor
+      player:notify("...making the park $terrexits");
+      this:make_park_exits(park, owner);
+   else
+      for street in [1..vertl]
+         this.corners = {@this.corners,{}};
+         for avenue in [1..horil]
+             !(avenue%(horil/2)) && !suspend(0) && player:tell("...building ",this.avenues[avenue], " Avenue & ", this.streets[street]," Street");
+             ((ticks_left() < 10000) || seconds_left() < 5) && suspend(0);
+             corner = $recycler:_create(gen_corner, owner);
+             ticks_left() < 8000 && suspend(0);
+             $byte_quota_utils:object_bytes(corner);
+             corner:moveto(city);
+             vert = street < vertl/2 ? "N. " | "";
+             vert = street > vertl/2 ? "S. " | vert;
+             hori = avenue < horil/2 ? " West" | "";
+             hori = avenue > horil/2 ? " East" | hori;
+             $building_utils:set_names(corner, tostr(vert, this.avenues[avenue], " Avenue & ", this.streets[street]," Street", hori));
+             this.corners[street] = {@this.corners[street], corner};
+         endfor
+      endfor
+      suspend(5) || player:notify("...making the corner virtual exits");
+      for y in [1..length(this.corners)]
+         lx = length(this.corners[y]);
+         suspend(0);
+         for x in [1..lx]
+            !(x%lx) && suspend(0);
+            room = this.corners[y][x];
+            ticks_left() < 8000 && suspend(0);
+            north = `this.corners[y - 1][x] ! ANY => $nothing';
+            room.virtual_exits = valid(north) ? {@room.virtual_exits, {{"North [n]", "n", "North"}, north, 0}} | room.virtual_exits;
+            south = `this.corners[y + 1][x] ! ANY => $nothing';
+            room.virtual_exits = valid(south) ? {@room.virtual_exits, {{"South [s]", "s", "South"}, south, 0}} | room.virtual_exits;
+            east = `this.corners[y][x + 1] ! ANY => $nothing';
+            room.virtual_exits = valid(east) ? {@room.virtual_exits, {{"East [e]", "e", "East"}, east, 0}} | room.virtual_exits;
+            west = `this.corners[y][x - 1] ! ANY => $nothing';
+            room.virtual_exits = valid(west) ? {@room.virtual_exits, {{"West [w]", "w", "West"}, west, 0}} | room.virtual_exits;
+         endfor
+      endfor
+   endif
+   player:tell("All done... @go ", this.corners[random($)][random($)], " and check it out.");
+else
+   player:notify("Okay. Try again later.");
+endif
+this.corners = {};
+.
+
+@verb park:make_generic_corner this none this rxd #2
+@program park:make_generic_corner
+if (!player.wizard)
+   return player:notify("This device will only work for a wizard.");
+else
+   city = args[1];
+   owner = args[2];
+   corner = $recycler:_create($veroom, owner);
+   $byte_quota_utils:object_bytes(corner);
+   corner:moveto(city);
+   $building_utils:set_names(corner, "Street Corner");
+   corner.description = this.corner_desc;
+   corner.fakes = this.corner_fakes;
+   corner.details = this.corner_details;
+   corner.seat = `this.corner_seats[1] ! ANY => ""';
+   corner.seat_aliai = `this.corner_seats[2..$] ! ANY => {}';
+   corner.seat_desc = this.corner_seat_desc ? this.corner_seat_desc | $veroom.seat_desc;
+   corner.title_style = 1;
+   corner.seat_max = `this.corner_seats[1] ! ANY => 0' ? 10 | 1;
+   return corner;
+endif
+.
+
+@verb park:make_park_exits this none this rxd #2
+@program park:make_park_exits
+if (!player.wizard)
+   return player:notify("This device will only work for a wizard.");
+else
+   park = args[1];
+   owner = args[2];
+   ticks_left() < 4000 && suspend(0);
+   player:notify("NORTH PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "North [n],n,North");
+   gate.source = park;
+   gate.dest = this.corners[6][10];
+   gate.x_loc = 4;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "South [s],s,South");
+   gate.source = this.corners[6][10];
+   gate.dest = park;
+   gate.x_loc = 4;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   "";
+   player:notify("NORTHEAST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Northeast [ne],ne,Northeast");
+   gate.source = park;
+   gate.dest = this.corners[6][15];
+   gate.x_loc = 8;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Southwest [sw],sw,Southwest");
+   gate.source = this.corners[6][15];
+   gate.dest = park;
+   gate.x_loc = 8;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   ticks_left() < 4000 && suspend(0);
+   player:notify("EAST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "East [e],e,East");
+   gate.source = park;
+   gate.dest = this.corners[10][7];
+   gate.x_loc = 8;
+   gate.y_loc = 4;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "West [w],w,West");
+   gate.source = this.corners[10][7];
+   gate.dest = park;
+   gate.x_loc = 8;
+   gate.y_loc = 4;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   "";
+   player:notify("SOUTHEAST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Southeast [se],se,Southeast");
+   gate.source = park;
+   gate.dest = this.corners[15][15];
+   gate.x_loc = 8;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Northwest [nw],nw,Northwest");
+   gate.source = this.corners[15][15];
+   gate.dest = park;
+   gate.x_loc = 8;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   ticks_left() < 4000 && suspend(0);
+   player:notify("SOUTH PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "South [s],s,South");
+   gate.source = park;
+   gate.dest = this.corners[15][11];
+   gate.x_loc = 5;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "North [n],n,North");
+   gate.source = this.corners[15][11];
+   gate.dest = park;
+   gate.x_loc = 5;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   "";
+   player:notify("SOUTHWEST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Southwest [sw],sw,Southwest");
+   gate.source = park;
+   gate.dest = this.corners[15][6];
+   gate.x_loc = 1;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Northeast [ne],ne,Northeast");
+   gate.source = this.corners[15][6];
+   gate.dest = park;
+   gate.x_loc = 1;
+   gate.y_loc = 8;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   ticks_left() < 4000 && suspend(0);
+   player:notify("WEST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "West [w],w,West");
+   gate.source = park;
+   gate.dest = this.corners[11][6];
+   gate.x_loc = 1;
+   gate.y_loc = 5;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "East [e],e,East");
+   gate.source = this.corners[11][6];
+   gate.dest = park;
+   gate.x_loc = 1;
+   gate.y_loc = 5;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+   "";
+   player:notify("NORTHWEST PARK GATE");
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Northwest [nw],nw,Northwest");
+   gate.source = park;
+   gate.dest = this.corners[6][6];
+   gate.x_loc = 1;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   gate = $recycler:_create($terrexit, owner);
+   $byte_quota_utils:object_bytes(gate);
+   $building_utils:set_names(gate, "Southeast [se],se,Southeast");
+   gate.source = this.corners[6][6];
+   gate.dest = park;
+   gate.x_loc = 1;
+   gate.y_loc = 1;
+   gate.source:add_exit(gate);
+   gate.dest:add_entrance(gate);
+   move(gate, $nothing);
+endif
+.

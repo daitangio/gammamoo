@@ -1,0 +1,17 @@
+RPG MOO Core - Archived on 12/11/07
+
+The Role-Playing Game Core for MOO servers is based on the 1997 LambdaCore, with updates from the 2000 LambdaCore. Many additional features have been added to allow gaming similar (but better, IMHO) to other MUD servers. This core database is saved with DOS linebreaks and zip-compressed, and should decompress to around 2 MB. The current version is 1.1. Address any bug reports, fixes, offers to host my MOO, or MOO project proposals to grhager@zubi.com. 
+
+(This project is not for profit. Any similarities between this system and other existing systems are either coincidental, public domain, or credit is given. Anyone may use, alter, and distribute the core as they see fit.)
+
+Core (last update: 7/17/01) - rpgcore.zip
+
+Tools For Building Instant Schools (last update: 7/17/01) - schlbomb.txt
+
+Tools For Building Instant Cities (last update: 8/10/01) - citybldr.txt
+
+Miscellaneous Patches 1 (last update: 8/10/01) - patch_1.txt
+
+Miscellaneous Patches 2 (last update: 2/28/02)  - patch_2.txt
+
+ANSI to HTML translation for inline HTML compatible MOO clients, such as MOOzilla (last update: 2/28/02) - ansihtml.txt
