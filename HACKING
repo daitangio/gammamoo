@@ -25,3 +25,9 @@ Sqlite3 fits in db_file and db_io
 Step1 Sqlite3 provide a new dump file version
 
 
+Other hacking/merging
+Consider also these changes
+https://github.com/xythian/wp-lambdamoo/compare/waterpoint-unicode
+https://github.com/xythian/wp-lambdamoo/commit/fd6f4829916ccdbecf3de724b6db09e5c694a5b8
+
+Consider integrating with https://github.com/robotfactory/lambdamoo

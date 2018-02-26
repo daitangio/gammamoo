@@ -66,7 +66,13 @@ sql_bind_text(sqlite3_stmt *pStmt, const char *param, char *value){
   sqlite3_bind_text(pStmt,index, value,-1,SQLITE_STATIC);
 }
 
-
+static int sql_step_key_int(sqlite3_stmt *ppStmt, const char *key, int val){
+  int rc;
+  sqlite3_reset(ppStmt);
+  sqlite3_bind_text(ppStmt,1 , key,-1,SQLITE_STATIC);
+  sqlite3_bind_int(ppStmt, 2 , val);
+  return sqlite3_step(ppStmt);
+}
 
 /*********** Verb and property I/O ***********/
 
@@ -189,7 +195,10 @@ read_object(void)
     return 1;
 }
 
-static void sql_write_object(sqlite3 *db,sqlite3_stmt *ppStmt,Objid oid)
+static void sql_write_object(sqlite3 *db,sqlite3_stmt *ppStmt,
+                             sqlite3_stmt *insertVerbStm,
+                             sqlite3_stmt *insertPropStm,
+                             Objid oid)
 {
   Object *o;
   Verbdef *v;
@@ -207,7 +216,10 @@ static void sql_write_object(sqlite3 *db,sqlite3_stmt *ppStmt,Objid oid)
   sqlite3_reset(ppStmt);
   sql_bind_int(ppStmt,":oid",oid);
   sql_bind_text(ppStmt,":name", o->name);
-
+  if(log_report_progress()){
+    oklog("Storing object %s #%d", o->name,oid);
+  }
+  
   sql_bind_int(ppStmt,":flags",o->flags);
 
   sql_bind_int(ppStmt,":owner",o->owner);
@@ -226,9 +238,117 @@ static void sql_write_object(sqlite3 *db,sqlite3_stmt *ppStmt,Objid oid)
   }
 
   // TODO write verbdefs
+
+  for (v = o->verbdefs; v; v = v->next) {
+    // Implement write_verbdef(v);
+    sqlite3_reset(insertVerbStm);
+    sql_bind_int(insertVerbStm,":oid",oid);
+    sql_bind_text(insertVerbStm,":name",v->name);
+    sql_bind_int(insertVerbStm, ":owner",v->owner);
+    sql_bind_int(insertVerbStm, ":perms",v->perms);
+    sql_bind_int(insertVerbStm, ":prep" ,v->prep );
+    rc=sqlite3_step(insertVerbStm);    
+  }
+  // write_propdef è solo dbio_write_string(p->name);
+  // write_propval è
+  //dbio_write_var(p->var);
+  //dbio_write_objid(p->owner);
+  //dbio_write_num(p->perms);
+  // TODO
+  /* Da chiarire cosa sia questo:stampa da un elenco di Propdef  il solo name (l'hash contenuta viene ricalcolata al ricaricamento)
+    for (i = 0; i < o->propdefs.cur_length; i++)
+	write_propdef(&o->propdefs.l[i]);
+
+Spiegazione:
+The next line contains the number of properties defined on this object, N. Following this are N lines of strings containing the name of each property.
+
+Finally, values for all of this object's properties are stored. The values are ordered sequentially, first giving values for each of the properties defined on this object, then values for each property defined on this object's parent, then for the parent's parent, and so on up to the top of the object's ancestry.
+
+See
+https://www.mars.org/home/rob/docs/lmdb.html
+
+Questo formato è bislacco e difficile da formalizare in SQL
+
+  */
+    nprops = dbpriv_count_properties(oid);
+
+    for (int i = 0; i < nprops; i++) {
+      char buf[10240]; //10Kb list
+      Pval *p; // has a owner and a perms
+      
+      // Implementation of write_propval := write_var+write_objid+num
+      sqlite3_reset(insertPropStm);
+      p= o->propval + i;
+      // GG: difficulto to relink to var name here. To go up to hier I think the owner should be a link
+      /*
+      if( i < o->propdefs.cur_length) {
+        sql_bind_text(insertPropStm,":var", (o->propdefs.l[i]).name);
+      }else {
+        sql_bind_text(insertPropStm,":var", "??jj??");
+      }
+      */
+      
+      //TODO:dbio_write_var(p->var); // complex write variable....
+      /* Here exploded:
+       */
+      Var v=p->var;
+      int propType=(int) v.type & TYPE_DB_MASK;
+      sql_bind_int(insertPropStm,":type", propType );
+
+      if(log_report_progress()){
+        oklog("Storing prop of type %d",propType);
+      }
+          
+      switch ((int) v.type) {
+      case TYPE_CLEAR:
+      case TYPE_NONE:
+	break;
+      case TYPE_STR:
+        sql_bind_text(insertPropStm,":parsable_value",v.v.str);
+	break;
+      case TYPE_OBJ:
+      case TYPE_ERR:
+      case TYPE_INT:
+      case TYPE_CATCH:
+      case TYPE_FINALLY:                
+          sprintf(buf,"%d",v.v.num);
+          sql_bind_text(insertPropStm,":parsable_value",buf);
+        
+	break;
+      case TYPE_FLOAT:
+        
+	// COMPLEX:::: dbio_write_float(*v.v.fnum);
+        sprintf(buf,"%dg",*v.v.fnum);
+        sql_bind_text(insertPropStm,":parsable_value",buf);
+        
+	break;
+      case TYPE_LIST:
+        sprintf(buf,"list unimplemented");
+        sql_bind_text(insertPropStm,":parsable_value",buf);
+        /*
+	dbio_write_num(v.v.list[0].v.num);
+        int j;
+	for (i = 0; i < v.v.list[0].v.num; j++)
+          dbio_write_var(v.v.list[j + 1]);
+        */
+	break;
+      }
+      
+      /* dbio_write_var ENDS */
+      
+      sql_bind_int(insertPropStm,":oid",oid);
+      sql_bind_int(insertPropStm,":owner", (p->owner)); // owner ojid
+      sql_bind_int(insertPropStm,":perms", (p->perms));
+
+      rc=sqlite3_step(insertPropStm);
+      if( rc !=SQLITE_DONE  ){
+        errlog("Unable to store property data into object table %s\n", sqlite3_errmsg(db));    
+      }
+    }
+  
   // write propdefs,
   // write propval
-
+  
 }
 
     
@@ -557,6 +677,10 @@ sql_callback_dump(void *reason, int argc, char **argv, char **azColName){
   return 0;
 }
 
+/** Storing data is complex.
+ * Controlling data is complex
+
+  */
 static int
 sql_write_db_file(const char *reason, const char *dbfile)
 {
@@ -606,13 +730,16 @@ sql_write_db_file(const char *reason, const char *dbfile)
                     ", sibling integer"          
                     "); "
                     /** cfr write_verbdef e write_propdef */
-                    "create table object_verb( oid integer, name text, owner integer, perms integer, prep integer ); "
-                    "create table object_prop( oid integer, var integer, owner integer, perms integer); "
+                    " create table object_verb( oid integer, name text, owner integer, perms integer, prep integer ); "
+                    "create table object_prop( oid integer, var integer, owner integer, perms integer, "
+                    " type integer, parsable_value text ); "
+                    
                     , sql_callback_dump, 0, &zErrMsg);
   
   if( rc!=SQLITE_OK ){
     errlog("SQL error during schema creation: %s\n", zErrMsg);
     sqlite3_free(zErrMsg);
+    exit(1000);
   }
   
   rc = sqlite3_exec(db, "insert into moo values('dbversion',1)", sql_callback_dump, 0, &zErrMsg);
@@ -649,6 +776,9 @@ sql_write_db_file(const char *reason, const char *dbfile)
     sqlite3_bind_text(ppStmt,1 ,"NUSERS",-1,SQLITE_STATIC);
     sqlite3_bind_int(ppStmt, 2 , nusers);
     rc=sqlite3_step(ppStmt);
+
+    rc=sql_step_key_int(ppStmt,"OBJID_SIZEOF", sizeof(Objid));
+    
     if( rc !=SQLITE_DONE  ){
       errlog("Unable to store Header data into MOO Table %s\n", sqlite3_errmsg(db));
     }
@@ -673,9 +803,8 @@ sql_write_db_file(const char *reason, const char *dbfile)
     // Step 3 write_object
     {
       oklog("%s: Writing %d objects+verbs+props...\n", reason, max_oid + 1);
-      sqlite3_stmt *insertStm;
-      rc=sqlite3_prepare_v2(
-                            db,
+      sqlite3_stmt *insertStm, *insertVerbStm, *insertPropStm;
+      rc=sqlite3_prepare_v2(db,
                             "INSERT INTO object ( oid  "
                             ", name "       
                             ", flags "                    
@@ -704,10 +833,21 @@ sql_write_db_file(const char *reason, const char *dbfile)
         errlog("Cannot build object insert statement");
         RAISE(dbpriv_dbio_failed, 0);
       }
+      rc=sqlite3_prepare_v2(db,
+                            " insert into object_verb values ( :oid, :name, :owner, :perms, :prep)",
+                            -1,&insertVerbStm,&pzTail);
+      rc=sqlite3_prepare_v2(db,"insert into object_prop values ( :oid, :var, :owner, :perms, :type,  :parsable_value)",
+                            -1,&insertPropStm,&pzTail);
+      if( rc!=SQLITE_OK ) {
+        errlog("Cannot build object_verb insert statement");
+        RAISE(dbpriv_dbio_failed, 0);
+      }
       for (oid = 0; oid <= max_oid; oid++) {
-        sql_write_object(db,insertStm,oid);
+        sql_write_object(db,insertStm,insertVerbStm, insertPropStm,oid);
       }
       sqlite3_finalize(insertStm);
+      sqlite3_finalize(insertVerbStm);
+      sqlite3_finalize(insertPropStm);
     }
     // Step 4 write verbs
     // Step 5 write forked and suspend tasks...

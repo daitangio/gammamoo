@@ -18,3 +18,4 @@ moo
 *.orig
 TAGS
 parser.c
+*.log
