@@ -1,0 +1,284 @@
+<html><head>
+<title>Anatomy of a LambdaMOO db file</title>
+</head><body>
+
+<h1>Anatomy of a LambdaMOO db file</h1>
+
+Authors: Robert Leslie
+<i>&lt;<a href="mailto:rob@ccs.neu.edu">rob@ccs.neu.edu</a>&gt;</i>,
+Alex Stewart
+<i>&lt;<a href="mailto:stewarta@netcom.com">stewarta@netcom.com</a>&gt;</i>
+<p>
+
+Disclaimer: Messing with the internals of LambdaMOO db files is inherently
+dangerous, and is not recommended. The following information is to be used at
+your own risk.
+<p>
+
+<hr>
+<p>
+
+The db file is flat ASCII text organized into lines.
+<p>
+
+<ul>
+<li> The first four lines comprise a header of:
+<p>
+<ol>
+<li>    the total number of objects in the database, including recycled
+        objects (also the value of max_object() plus one);
+<li>    the total number of verb programs in the database, not including
+        unprogrammed verbs;
+<li>    a number whose value is uninteresting, and
+<li>    the total number of objects whose player flag is set.
+</ol>
+<p>
+
+<li> The next N lines comprise a list of player object numbers. N is equal
+     to the value of line 4 in the db header.
+
+<p>
+<li> The next section contains a description of every object in the
+     database. Each object has the following structure:
+<p>
+<ol>
+<li>    a tag line containing a pound sign and the object number. If the
+        object has been recycled, the word "recycled" also appears.
+<p>
+
+   For non-recycled objects:
+<p>
+<li>    a string containing the value of the object's .name property;
+<li>    a string which can be ignored;
+<li>    a number containing a set of flags, described below
+<a href="#1">[1]</a>;
+<li>    the object number which is this object's .owner;
+<li>    the object number which is this object's .location;
+<li>    the object number of the first object in a linked list of this
+        object's .contents (or -1 if it contains nothing);
+<li>    the object number of the next object in a linked list of this
+        object's .location's .contents (or -1 if the end of the list);
+<li>    the object number of this object's parent;
+<li>    the object number of the first object in a linked list of this
+        object's children (or -1 if it has no children);
+<li>    the object number of the next object in a linked list of this
+        object's parent's children (or -1 if the end of the list);
+
+<li>    the number of verbs defined on this object, regardless of whether
+        they have been programmed;
+<p>
+        For each verb:
+<p>
+<ol>
+<li>         a string containing the name(s) for the verb;
+<li>         the object number of the owner of the verb;
+<li>         a number containing permissions flags, described below
+<a href="#2">[2]</a>;
+<li>         a number containing an argument preposition code;
+</ol>
+</ol>
+<p>
+   The next line contains the number of properties defined on this object, N.
+   Following this are N lines of strings containing the name of each property.
+<p>
+   Finally, values for all of this object's properties are stored. The
+   values are ordered sequentially, first giving values for each of the
+   properties defined on this object, then values for each property defined
+   on this object's parent, then for the parent's parent, and so on up to the
+   top of the object's ancestry.
+<p>
+   The first line contains the total number of property values which follow.
+   For each property value:
+<p>
+<ol>
+<li>    a number indicating the typeof() of the datatype, or the number 5
+        to represent a clear value;
+<p>
+        For non-clear values:
+<p>
+<li>    for a string datatype, the contents of the string; for object,
+        error, or number datatypes, the value as a number; for lists, the
+        length of the list, N;
+<p>
+For a list value, N more data definitions follow (one for each element of the
+list) in the same form (integer type followed by appropriate additional data.)
+</ol>
+<p>
+   Finally, each property value is followed with:
+<p>
+<ol>
+<li>    the object number of the owner of the property (on this object);
+<li>    a number containing permissions flags, described below
+<a href="#3">[3]</a>;
+</ol>
+<p>
+
+<li> Following the object descriptions is verb program code for every
+     programmed verb. Unprogrammed verbs are omitted. For each program:
+<p>
+<ol>
+<li>    a tag line containing a pound sign, the object number where this
+        verb resides, a colon, and a zero-based index into the object's
+        defined verbs specifying the verb associated with the following code.
+<p>
+        The program code for the verb follows, in source form. The code is
+        terminated by a single dot.
+</ol>
+<p>
+<li> The last section of the db file contains suspended task information.
+<p>
+The first line in the queued tasks list is of the form "&lt;num&gt; clocks"
+(where &lt;num&gt; is a number.  This is basically an obsolete aspect of task
+handling in the earlier days of MOO servers, and is simply reported as "0
+clocks" in modern servers.  If nonzero, it's followed by &lt;num&gt; lines of
+clock data which can be ignored anyway.
+<p>
+Following this is a line stating "&lt;num&gt; queued tasks", which is the
+number of forked tasks in the task queue.  Following this are &lt;num&gt;
+blocks of data containing the state of the MOO for each task, defined
+variables, and the portion of verb code being executed.  Each of these blocks
+starts with a line of the form:
+<pre>
+	0 &lt;lineno&gt; &lt;start-time&gt; &lt;task-id&gt;
+</pre>
+Followed by two more lines which don't mean anything anymore:
+<pre>
+	0
+	-111
+</pre>
+
+Followed by a line of the form:
+<pre>
+	&lt;this&gt; -7 -8 &lt;player&gt; -9 &lt;programmer&gt; &lt;verb-location&gt; -10 &lt;debug&gt;
+</pre>
+(the -7 -8 -9 and -10 spots aren't used for anything anymore) Followed by 4
+more unused lines:
+<pre>
+	No
+	More
+	Parse
+	Info
+</pre>
+followed by the value of the "verb" variable at the current point in time,
+followed by the name of the actual verb that goes with the verb code being
+executed.
+<p>
+
+Next comes information on the runtime environment (variable definitions), then
+the block of verb code that was forked off, ending in a line with a period by
+itself.
+<p>
+
+After all the forked tasks comes a line of the form "&lt;num&gt; suspended
+tasks", which is followed by &lt;num&gt; blocks of info for the suspended
+tasks.
+<p>
+
+While I could go into great detail about the contents of the file from here on
+it probably wouldn't do many people very much good, as it's nearly impossible
+to follow all the little details by hand anyway, and I'm not sure why someone
+would want to for suspended tasks..  If you're just looking through and want to
+know what you're seeing, there are &lt;num&gt; blocks of data (one for each
+task). Each of these blocks has data for each point in the callers() stack (in
+the order of first-executed (shallowest) to currently-executing (deepest)).
+For each entry in the callers() stack, it lists the verb code of the executing
+verb, all of the variables defined for that invokation, a block of data
+similar to that listed for forked tasks (0, -111, this/player/etc line, "No",
+"More", "Parse", "Info", verb, verb-name), and some other less informational
+stuff stuck in here and there between them all..
+<p>
+
+<li>And then there is the end.
+
+</ul>
+
+<pre>
+ <a name="1">[1]</a> Object flags:          player      0x01
+                            programmer  0x02
+                            wizard      0x04
+                            read        0x10
+                            write       0x20
+                            fertile     0x80
+
+ <a name="2">[2]</a> Verb permissions:      read        0x01
+                            write       0x02
+                            execute     0x04
+                            debug       0x08
+                            dobj arg    0x30  ("none", "any", "this")
+                            iobj arg    0xC0  ("none", "any", "this")
+
+ <a name="3">[3]</a> Property permissions:  read        0x01
+                            write       0x02
+                            chown       0x04
+</pre>
+
+<h2>Answers to Common Questions</h2>
+
+<h3>How do I find a particular object?</h3>
+
+Search the db file from the beginning for the string "#X" on a single line
+where X is the desired object number. Of course, you might find instead an
+object string property value which happens to contain the same text, so be
+sure you also check the following line, which should contain the name of the
+object you're looking for.
+<p>
+
+<h3>How do I remove/add/modify properties?</h3>
+
+Adding or removing properties is treacherous; property definition counts and
+value counts must match exactly, and you must take into account property
+values on all descendents of the object in question.
+<p>
+You might be able to get away with modifying the value of a property if you're
+very careful. It might be hard to find the actual value in the db file, since
+it isn't obvious which values are matched with which property names. If the
+current value is something you could search for (say, if you knew an encrypted
+password beforehand and could search for it) you might have better luck.
+<p>
+
+<h3>How do I remove/add/modify verbs?</h3>
+
+Removing verbs is easier by comparison. You must delete the four lines
+containing the verb definition in the object description where the verb lives,
+and decrement the verb count on the 12th line of the object definition. If the
+verb has been programmed, you should also remove the associated verb code in
+the latter portion of the db file and decrement the global verb count on the
+2nd line of the file. There is one gotcha: by removing the verb, all later
+verbs in the object have been renumbered (recall the verb code section assigns
+code to verbs using a 0-based index) so you must renumber the tag lines for
+the affected verb programs accordingly.
+<p>
+It would be feasible to add a new verb by doing the reverse of this.
+<p>
+
+<h3>How do I remove active tasks?</h3>
+
+You could eliminate all suspended tasks by replacing the last section of the
+db file containing task information with the following three lines:
+<pre>
+0 clocks
+0 queued tasks
+0 suspended tasks
+</pre>
+These lines should immediately follow the last verb program, and should be
+followed immediately by the end of file.
+<p>
+
+<h3>Are there any rough integrity checks I can perform by hand?</h3>
+
+The above description is probably complete enough for you to decide whatever
+integrity checks are feasible and how to make them. However, testing a
+modified db with the real LambdaMOO server is probably the best way to be sure
+it is still at least usable. If there are minor problems, the server may even
+be able to compensate for some of them during its own rigid verifications.
+<p>
+I shouldn't need to emphasize that editing db files by hand is inherently
+dangerous. I really don't recommend any amount of significant hacking.
+<p>
+Also, although I am fairly confident the above description is correct, I am by
+no means making any guarantee about its accuracy, and certainly am not willing
+to accept responsibility for any damage done to anyone's db as a result of my
+making this public. Nonetheless, I hope it's useful to some.
+<p>
+
+</body></html>
