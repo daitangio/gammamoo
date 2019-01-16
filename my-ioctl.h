@@ -20,7 +20,9 @@
 #include <sys/ioctl.h>
 
 #if NDECL_IOCTL
+#ifndef _UNISTD_H_
 extern int ioctl(int, int,...);
+#endif
 #endif
 
 /* 

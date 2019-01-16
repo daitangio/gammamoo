@@ -14,7 +14,7 @@
 #   Pavel@Xerox.Com
 
 CC = @CC@
-LIBRARIES = @LIBS@
+LIBRARIES = @LIBS@ -lnetwork
 MOOLIBS = @MOOLIBS@
 YACC = @YACC@
 

@@ -697,7 +697,9 @@ typedef unsigned32 Unsignednum;
 #define INTNUM_MAX INT32_MAX
 
 /* Assume support for u_int64_t otherwise uncomment */
-/* #define WIDER_INTEGERS_NOT_AVAILABLE */
+#define WIDER_INTEGERS_NOT_AVAILABLE
+/** GG HAIKU TRY TO DISABLE (TEMP)^^^ uint64_t is available */
+
 #  ifndef WIDER_INTEGERS_NOT_AVAILABLE
 typedef u_int64_t Unsignednum_Wide;
 #  endif

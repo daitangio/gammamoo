@@ -1,0 +1,28 @@
+Gperf must be installed
+perl is not installed under /usr/bin (there is no /usr on Haiku)
+
+gcc -g  -O  -c -o network.o network.c
+In file included from net_multi.c:21:0,
+                 from network.c:23:
+my-ioctl.h:23:12: error: conflicting types for 'ioctl'
+ extern int ioctl(int, int,...);
+            ^~~~~
+In file included from /boot/system/develop/headers/bsd/unistd.h:9:0,
+                 from /boot/system/develop/headers/posix/fcntl.h:11,
+                 from my-fcntl.h:20,
+                 from net_multi.c:20,
+                 from network.c:23:
+/boot/system/develop/headers/posix/unistd.h:182:13: note: previous declaration of 'ioctl' was here
+ extern int  ioctl(int fd, unsigned long op, ...);
+             ^~~~~
+<builtin>: recipe for target 'network.o' failed
+
+Other error is
+numbers.c:702:9: error: unknown type name 'u_int64_t'
+ typedef u_int64_t Unsignednum_Wide;
+         ^~~~~~~~~
+<builtin>: recipe for target 'numbers.o' failed
+make: *** [numbers.o] Error 1
+
+
+
