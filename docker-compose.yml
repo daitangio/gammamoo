@@ -8,6 +8,6 @@ services:
     ports:
       - 7777:7777
     environment:
-      - CORE_TO_LOAD=LambdaCore.db
+      - CORE_TO_LOAD=LambdaCore
     volumes:
       - ./db-cores:/cores
