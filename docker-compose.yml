@@ -1,0 +1,13 @@
+version: '2'
+
+services:
+  dev_server:
+    image: daitan_gammamoo:1.0.0
+    build:
+      context: .
+    ports:
+      - 7777:7777
+    environment:
+      - CORE_TO_LOAD=LambdaCore.db
+    volumes:
+      - ./db-cores:/cores

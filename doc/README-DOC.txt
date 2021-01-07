@@ -9,7 +9,7 @@ To generate html, txt, info format please install
 https://www.gnu.org/software/texinfo/
 
 Install makeinfo with
- sudo aptitude install texinfo
+ sudo apt install texinfo
 
 then produce the output with the following script
 #+begin_src sh
