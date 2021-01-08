@@ -1,0 +1,15 @@
+connect robot
+"Robot will setup all the rooms. #62 is the The First Room
+
+@go #62
+@dig n,north to "The Park"
+n
+@dig s,south to #62
+
+
+
+;"=======  Save  ========"
+;dump_database()
+
+@quit
+;"Endline here"
