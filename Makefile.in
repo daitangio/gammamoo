@@ -150,7 +150,7 @@ tags:
 	etags -t $(SRCS)
 
 clean:
-	rm -f $(OBJS) $(OPT_NET_OBJS) core y.tab.c y.tab.h y.output version_options.h makedep eddep
+	rm -f $(OBJS) $(OPT_NET_OBJS) core y.tab.c y.tab.h y.output version_options.h makedep eddep parser.c
 
 distclean:	clean
 	rm -f config.h Makefile config.status
