@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright (c) 1992, 1994, 1995, 1996 Xerox Corporation.  All rights reserved.
 # Portions of this code were written by Stephen White, aka ghond.
@@ -20,19 +20,28 @@ if [ $# -lt 1 -o $# -gt 2 ]; then
 	exit 1
 fi
 
-if [ ! -r $1.db ]; then
-	echo "Unknown database: $1.db"
+# Remove .db from first parameter if any
+prefix=$1
+dbname_without_postifix=${prefix/.db/}
+
+dbname=${dbname_without_postifix}.db
+
+if [ ! -r $dbname ]; then
+	echo "Unknown database: ${dbname}"
 	exit 1
 fi
 
-if [ -r $1.db.new ]; then
-	mv $1.db $1.db.old
-	mv $1.db.new $1.db
-	rm -f $1.db.old.gz
-	gzip $1.db.old &
+
+
+if [ -r $dbname_without_postifix.db.new ]; then
+	mv $dbname_without_postifix.db $dbname_without_postifix.db.old
+	mv $dbname_without_postifix.db.new $dbname_without_postifix.db
+	rm -f $dbname_without_postifix.db.old.gz
+	gzip $dbname_without_postifix.db.old &
 fi
 
 
 echo === Docker container ====
 echo `date`: RESTARTED
-./moo $1.db $1.db.new $2
+set -x
+./moo $dbname_without_postifix.db $dbname_without_postifix.db.new $2

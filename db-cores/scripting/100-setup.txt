@@ -1,0 +1,31 @@
+;"============================================================="
+;"=======  GammaMoo DarkCircle Setup  ========"
+;"============================================================="
+
+;"=======  Set up dump intervals  ========"
+;#0.dump_interval=300
+
+;" restrict creation of new characters to the @make-player command (ie. prevent create <playername> <password> from the login screen"
+@set $login.create_enabled to 0
+
+;"=== ? Create a new user for adding objects and so on ==="
+@toad robot
+Regenearting robot
+
+@recycle robot
+
+;;for object in [1..tonum(max_object())]   object = toobj(object); if(object.name=="robot") recycle(object) ; endif ; endfor
+
+@make-player robot jj@gioorgi.com
+yes
+
+@chparent robot to $wiz
+@programmer robot
+;"Find the robot and wizard it"
+;;for object in [1..tonum(max_object())]   object = toobj(object); if(object.name=="robot")  object.wizard=1 ; endif ; endfor
+;robot.wizard
+
+;"=======  Save  ========"
+;dump_database()
+
+

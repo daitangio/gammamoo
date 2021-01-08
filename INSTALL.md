@@ -5,7 +5,7 @@ Unix/LINUX PREREQUISITES
 LambdaMOO require yacc (parser) and gperf  (perfect hash function generator)
 
 On Ubuntu/Debian install yacc and gperf with:
-sudo apt install -y bison gperf
+sudo apt install -y bison gperf autoconf
 
 COMPILATION
 

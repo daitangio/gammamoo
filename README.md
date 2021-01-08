@@ -1,3 +1,10 @@
+
+- [Introduction](#introduction)
+- [Getting Started With LambdaMOO](#getting-started-with-lambdamoo)
+- [How to Add New Built-In Functions to the MOO Language](#how-to-add-new-built-in-functions-to-the-moo-language)
+- [Resources](#resources)
+
+# Introduction
 WARNING: If you are upgrading an existing LambdaMOO database from an earlier
 version of the server, you should read the relevant notes in ChangeLog.txt
 regarding DB changes you may need to make *before* doing the upgrade.  Such
@@ -5,8 +12,8 @@ notes are marked in ChangeLog.txt with the string `NOTE'.
 
 ------------------------------------------------------------------------------
 
-			Getting Started With LambdaMOO
-			------------------------------
+# Getting Started With LambdaMOO
+
 
 LambdaMOO has been successfully compiled and tested on several machines and
 operating systems; see INSTALL.md
@@ -121,10 +128,10 @@ saying just `subscribe' to get yourself added to the list.
 
 	Pavel@Xerox.Com
 
-------------------------------------------------------------------------------
 
-	     How to Add New Built-In Functions to the MOO Language
-	     -----------------------------------------------------
+
+# How to Add New Built-In Functions to the MOO Language
+
 
 Implement your functions by following the many examples in the distributed
 server code (e.g., in the file `numbers.c').  Then follow the directions in the
@@ -164,3 +171,8 @@ Key to `Networking Options' codes:
      BL		   NP_LOCAL		NS_BSD
      VT		   NP_TCP		NS_SYSV
      VL		   NP_LOCAL		NS_SYSV
+
+# Resources
+
+Tutorial: https://www.darksleep.com/notablog/articles/LambdaMOO_Programming_Tutorial
+FAQ: http://www.moo-cows.com/docs/faqs/new-archwiz-faq.html
