@@ -5,6 +5,10 @@
 - [Resources](#resources)
 
 # Introduction
+
+Please refer to https://github.com/daitangio/toaststunt
+for a more advanced implementation, based on more recent Lambdamoo efforts and patches
+
 WARNING: If you are upgrading an existing LambdaMOO database from an earlier
 version of the server, you should read the relevant notes in ChangeLog.txt
 regarding DB changes you may need to make *before* doing the upgrade.  Such
